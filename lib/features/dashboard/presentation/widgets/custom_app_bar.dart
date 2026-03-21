@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   const CustomAppBar({super.key});
@@ -73,15 +74,23 @@ class _NavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Text(
-        title,
-        style: TextStyle(
-          color: isActive ? const Color(0xFFAEC6FF) : const Color(0xFFACABAA),
-          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-          fontSize: 14,
-          fontFamily: 'Inter',
+    return InkWell(
+      onTap: () {
+        if (title == 'Dashboard') context.go('/');
+        if (title == 'Explorer') context.go('/explorer');
+        if (title == 'Organizer') context.go('/organizer');
+        if (title == 'Reports') context.go('/reports');
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        child: Text(
+          title,
+          style: TextStyle(
+            color: isActive ? const Color(0xFFAEC6FF) : const Color(0xFFACABAA),
+            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+            fontSize: 14,
+            fontFamily: 'Inter',
+          ),
         ),
       ),
     );

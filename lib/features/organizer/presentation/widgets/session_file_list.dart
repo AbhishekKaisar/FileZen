@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../screens/metadata_visualizer_bottom_sheet.dart';
 
 class SessionFileList extends StatelessWidget {
   const SessionFileList({super.key});
@@ -11,6 +12,7 @@ class SessionFileList extends StatelessWidget {
         _buildSessionHeader('Morning Session — 09:00'),
         const SizedBox(height: 8),
         _buildFileItem(
+          context: context,
           icon: Icons.description,
           iconColor: const Color(0xFFAEC6FF),
           title: 'Campaign_Brief_V2.pdf',
@@ -22,6 +24,7 @@ class SessionFileList extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         _buildFileItem(
+          context: context,
           icon: Icons.image,
           iconColor: const Color(0xFFE4DFFF),
           title: 'Hero_Visual_Concept.png',
@@ -35,6 +38,7 @@ class SessionFileList extends StatelessWidget {
         _buildSessionHeader('Afternoon Session — 14:30'),
         const SizedBox(height: 8),
         _buildFileItem(
+          context: context,
           icon: Icons.table_chart,
           iconColor: const Color(0xFFAEC6FF),
           title: 'Budget_Projections_Final.xlsx',
@@ -65,6 +69,7 @@ class SessionFileList extends StatelessWidget {
   }
 
   Widget _buildFileItem({
+    required BuildContext context,
     required IconData icon,
     required Color iconColor,
     required String title,
@@ -74,8 +79,17 @@ class SessionFileList extends StatelessWidget {
     required Color badgeTextColor,
     required String extraInfo,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
+    return InkWell(
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => const MetadataVisualizerBottomSheet(),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF131313),
         borderRadius: BorderRadius.circular(12),
@@ -145,8 +159,9 @@ class SessionFileList extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 16),
-          const Icon(Icons.more_vert, color: Color(0xFFACABAA)),
-        ],
+            const Icon(Icons.more_vert, color: Color(0xFFACABAA)),
+          ],
+        ),
       ),
     );
   }
