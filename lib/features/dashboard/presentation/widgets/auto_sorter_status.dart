@@ -19,7 +19,6 @@ class AutoSorterStatus extends StatelessWidget {
         runSpacing: 24,
         children: [
           Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(
                 width: 56,
@@ -53,27 +52,29 @@ class AutoSorterStatus extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 24),
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Auto-Sorter Active',
-                    style: TextStyle(
-                      fontFamily: 'Manrope',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white,
+              const Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Auto-Sorter Active',
+                      style: TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
                     ),
-                  ),
-                  Text(
-                    'Intelligent file organization in progress',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 14,
-                      color: Color(0xFFACABAA),
+                    Text(
+                      'Intelligent file organization in progress',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 14,
+                        color: Color(0xFFACABAA),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
@@ -82,10 +83,10 @@ class AutoSorterStatus extends StatelessWidget {
             spacing: 32,
             runSpacing: 16,
             children: [
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'STATUS TICKER',
                     style: TextStyle(
                       fontFamily: 'Inter',
@@ -95,32 +96,35 @@ class AutoSorterStatus extends StatelessWidget {
                       color: Color(0xFFACABAA),
                     ),
                   ),
-                  SizedBox(height: 4),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Last scan: 2 mins ago',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFFAEC6FF),
+                  const SizedBox(height: 4),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Last scan: 2 mins ago',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFFAEC6FF),
+                          ),
                         ),
-                      ),
-                      SizedBox(width: 8),
-                      Text('•', style: TextStyle(color: Color(0xFF484848))),
-                      SizedBox(width: 8),
-                      Text(
-                        'Organized 12 files',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 14,
-                          fontStyle: FontStyle.italic,
-                          color: Color(0xFFACABAA),
+                        const SizedBox(width: 8),
+                        const Text('•', style: TextStyle(color: Color(0xFF484848))),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Organized 12 files',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 14,
+                            fontStyle: FontStyle.italic,
+                            color: Color(0xFFACABAA),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),

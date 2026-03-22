@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../widgets/custom_app_bar.dart';
 import '../widgets/storage_overview_widget.dart';
 import '../widgets/quick_access_grid.dart';
 import '../widgets/auto_sorter_status.dart';
@@ -11,7 +10,6 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0E0E0E),
-      appBar: const CustomAppBar(),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
         child: Center(

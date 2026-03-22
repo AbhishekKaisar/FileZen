@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../widgets/organizer_app_bar.dart';
 import '../widgets/project_blocks_grid.dart';
 import '../widgets/timeline_view_header.dart';
 import '../widgets/day_tabs_selector.dart';
@@ -12,7 +11,6 @@ class BlockOrganizerScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0E0E0E),
-      appBar: const OrganizerAppBar(),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
         child: Center(

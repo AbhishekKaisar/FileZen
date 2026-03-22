@@ -5,11 +5,8 @@ class AdvancedExplorerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Advanced Explorer'),
-      ),
-      body: const Center(
+    return const Scaffold(
+      body: Center(
         child: Text('Advanced Explorer Screen'),
       ),
     );
