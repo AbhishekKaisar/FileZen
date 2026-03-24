@@ -8,25 +8,29 @@ class StorageMetricsCards extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth > 800) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                flex: 2,
-                child: _buildLiveStatusCard(),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                flex: 1,
-                child: Column(
-                  children: [
-                    Expanded(child: _buildInfoCard(Icons.folder_zip, const Color(0xFF8FA0AA), '142,803', 'Total Objects Indexed')),
-                    const SizedBox(height: 16),
-                    Expanded(child: _buildInfoCard(Icons.verified_user, const Color(0xFFE4DFFF), '99.9%', 'Integrity Score')),
-                  ],
+          // Column in a scroll view gives unbounded height; IntrinsicHeight
+          // gives this Row a finite cross-axis extent so nested Expanded works.
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: _buildLiveStatusCard(),
                 ),
-              )
-            ],
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 1,
+                  child: Column(
+                    children: [
+                      Expanded(child: _buildInfoCard(Icons.folder_zip, const Color(0xFF8FA0AA), '142,803', 'Total Objects Indexed')),
+                      const SizedBox(height: 16),
+                      Expanded(child: _buildInfoCard(Icons.verified_user, const Color(0xFFE4DFFF), '99.9%', 'Integrity Score')),
+                    ],
+                  ),
+                )
+              ],
+            ),
           );
         } else {
           return Column(
