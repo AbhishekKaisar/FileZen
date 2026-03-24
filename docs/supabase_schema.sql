@@ -455,3 +455,5 @@ for each row execute function app.set_updated_at();
 -- 3. Insert one app_settings row with id = true during bootstrap.
 -- 4. Store binary file content in Supabase Storage, and only metadata/path here.
 -- 5. Maintain folder path_cache and depth values in backend logic when moving folders.
+-- 6. For organizer block + weekday columns on app.files, run docs/migrations/002_organizer_block_day_columns.sql
+--    (or merge those columns into this file for greenfield installs).
