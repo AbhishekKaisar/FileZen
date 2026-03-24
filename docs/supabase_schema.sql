@@ -1,6 +1,7 @@
 -- FileZen initial database schema for Supabase PostgreSQL
--- Designed for a real file management app with folders, files, metadata,
--- reports, settings, automation rules, collaboration, and auditability.
+-- Authentication and user profiles intentionally excluded.
+-- This schema focuses on core file management, folder hierarchy, metadata,
+-- reports, automation rules, settings, and operational history.
 
 create extension if not exists pgcrypto;
 
@@ -22,75 +23,27 @@ begin
 end;
 $$;
 
-create or replace function app.current_user_id()
-returns uuid
-language sql
-stable
-as $$
-  select auth.uid();
-$$;
-
 -- ---------------------------------------------------------------------------
--- Profiles and workspaces
+-- Workspaces
 -- ---------------------------------------------------------------------------
-
-create table if not exists app.profiles (
-  id uuid primary key references auth.users (id) on delete cascade,
-  email text,
-  display_name text,
-  avatar_url text,
-  timezone text not null default 'UTC',
-  locale text not null default 'en-US',
-  created_at timestamptz not null default timezone('utc', now()),
-  updated_at timestamptz not null default timezone('utc', now())
-);
 
 create table if not exists app.workspaces (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   slug text not null unique,
   description text,
-  owner_user_id uuid not null references app.profiles (id) on delete restrict,
-  plan_tier text not null default 'free'
-    check (plan_tier in ('free', 'pro', 'team', 'enterprise')),
   status text not null default 'active'
-    check (status in ('active', 'archived', 'suspended')),
+    check (status in ('active', 'archived')),
+  is_default boolean not null default false,
   storage_quota_bytes bigint,
   created_at timestamptz not null default timezone('utc', now()),
-  updated_at timestamptz not null default timezone('utc', now())
-);
-
-create table if not exists app.workspace_members (
-  id uuid primary key default gen_random_uuid(),
-  workspace_id uuid not null references app.workspaces (id) on delete cascade,
-  user_id uuid not null references app.profiles (id) on delete cascade,
-  role text not null
-    check (role in ('owner', 'admin', 'editor', 'viewer')),
-  status text not null default 'active'
-    check (status in ('invited', 'active', 'disabled')),
-  invited_by uuid references app.profiles (id) on delete set null,
-  joined_at timestamptz,
-  created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
-  unique (workspace_id, user_id)
+  constraint workspaces_name_not_blank check (btrim(name) <> '')
 );
 
-create index if not exists idx_workspace_members_user_id
-  on app.workspace_members (user_id);
-
-create or replace function app.is_workspace_member(p_workspace_id uuid)
-returns boolean
-language sql
-stable
-as $$
-  select exists (
-    select 1
-    from app.workspace_members wm
-    where wm.workspace_id = p_workspace_id
-      and wm.user_id = auth.uid()
-      and wm.status = 'active'
-  );
-$$;
+create unique index if not exists uq_workspaces_default_true
+  on app.workspaces (is_default)
+  where is_default = true;
 
 -- ---------------------------------------------------------------------------
 -- Folder tree
@@ -100,11 +53,11 @@ create table if not exists app.folders (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references app.workspaces (id) on delete cascade,
   parent_folder_id uuid references app.folders (id) on delete cascade,
-  created_by uuid references app.profiles (id) on delete set null,
   name text not null,
   path_cache text not null,
   depth integer not null default 0 check (depth >= 0),
   color_hex text,
+  notes text,
   is_system boolean not null default false,
   is_archived boolean not null default false,
   sort_order integer not null default 0,
@@ -129,16 +82,15 @@ create index if not exists idx_folders_workspace_path
   on app.folders (workspace_id, path_cache);
 
 -- ---------------------------------------------------------------------------
--- Files and versions
+-- Files
 -- ---------------------------------------------------------------------------
 
 create table if not exists app.files (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references app.workspaces (id) on delete cascade,
   folder_id uuid references app.folders (id) on delete set null,
-  created_by uuid references app.profiles (id) on delete set null,
-  updated_by uuid references app.profiles (id) on delete set null,
   name text not null,
+  original_name text,
   extension text,
   mime_type text,
   media_category text not null default 'other'
@@ -153,7 +105,9 @@ create table if not exists app.files (
   storage_provider text not null default 'supabase'
     check (storage_provider in ('supabase', 's3', 'gcs', 'local')),
   storage_class text,
+  description text,
   is_favorite boolean not null default false,
+  is_locked boolean not null default false,
   is_archived boolean not null default false,
   is_deleted boolean not null default false,
   deleted_at timestamptz,
@@ -193,11 +147,14 @@ create index if not exists idx_files_workspace_archived
 create index if not exists idx_files_metadata_gin
   on app.files using gin (metadata);
 
+-- ---------------------------------------------------------------------------
+-- File versions and extracted metadata
+-- ---------------------------------------------------------------------------
+
 create table if not exists app.file_versions (
   id uuid primary key default gen_random_uuid(),
   file_id uuid not null references app.files (id) on delete cascade,
   version_number integer not null check (version_number > 0),
-  created_by uuid references app.profiles (id) on delete set null,
   size_bytes bigint not null default 0 check (size_bytes >= 0),
   checksum_sha256 text,
   storage_bucket text not null,
@@ -226,6 +183,7 @@ create table if not exists app.file_metadata (
   duration_ms bigint,
   page_count integer,
   word_count integer,
+  language_code text,
   camera_model text,
   taken_at timestamptz,
   exif jsonb not null default '{}'::jsonb,
@@ -245,7 +203,7 @@ create index if not exists idx_file_metadata_search
   on app.file_metadata using gin (extracted_text);
 
 -- ---------------------------------------------------------------------------
--- Tags, favorites, shares
+-- Classification and sharing
 -- ---------------------------------------------------------------------------
 
 create table if not exists app.tags (
@@ -253,7 +211,6 @@ create table if not exists app.tags (
   workspace_id uuid not null references app.workspaces (id) on delete cascade,
   name text not null,
   color_hex text,
-  created_by uuid references app.profiles (id) on delete set null,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
   unique (workspace_id, lower(name))
@@ -262,7 +219,6 @@ create table if not exists app.tags (
 create table if not exists app.file_tags (
   file_id uuid not null references app.files (id) on delete cascade,
   tag_id uuid not null references app.tags (id) on delete cascade,
-  created_by uuid references app.profiles (id) on delete set null,
   created_at timestamptz not null default timezone('utc', now()),
   primary key (file_id, tag_id)
 );
@@ -272,13 +228,13 @@ create table if not exists app.file_shares (
   workspace_id uuid not null references app.workspaces (id) on delete cascade,
   file_id uuid references app.files (id) on delete cascade,
   folder_id uuid references app.folders (id) on delete cascade,
-  created_by uuid not null references app.profiles (id) on delete cascade,
   share_type text not null
-    check (share_type in ('internal', 'public_link')),
+    check (share_type in ('public_link', 'internal_token')),
   access_level text not null
     check (access_level in ('viewer', 'editor', 'download')),
-  token text unique,
+  token text not null unique,
   expires_at timestamptz,
+  is_active boolean not null default true,
   created_at timestamptz not null default timezone('utc', now()),
   constraint file_shares_target_check check (
     (file_id is not null and folder_id is null)
@@ -293,25 +249,22 @@ create table if not exists app.file_shares (
 create table if not exists app.saved_views (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references app.workspaces (id) on delete cascade,
-  created_by uuid not null references app.profiles (id) on delete cascade,
   name text not null,
-  scope text not null default 'private'
-    check (scope in ('private', 'workspace')),
   filters jsonb not null default '{}'::jsonb,
   sort jsonb not null default '{}'::jsonb,
   layout text not null default 'list'
     check (layout in ('list', 'grid', 'timeline')),
+  is_default boolean not null default false,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
 
 create index if not exists idx_saved_views_workspace
-  on app.saved_views (workspace_id, created_by);
+  on app.saved_views (workspace_id, name);
 
 create table if not exists app.organizer_rules (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references app.workspaces (id) on delete cascade,
-  created_by uuid not null references app.profiles (id) on delete cascade,
   name text not null,
   description text,
   is_enabled boolean not null default true,
@@ -332,13 +285,12 @@ create index if not exists idx_organizer_rules_workspace_enabled
   on app.organizer_rules (workspace_id, is_enabled, priority);
 
 -- ---------------------------------------------------------------------------
--- Reports and report runs
+-- Reports
 -- ---------------------------------------------------------------------------
 
 create table if not exists app.report_definitions (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references app.workspaces (id) on delete cascade,
-  created_by uuid not null references app.profiles (id) on delete cascade,
   name text not null,
   description text,
   report_type text not null
@@ -359,7 +311,6 @@ create table if not exists app.report_runs (
   id uuid primary key default gen_random_uuid(),
   report_definition_id uuid not null references app.report_definitions (id) on delete cascade,
   workspace_id uuid not null references app.workspaces (id) on delete cascade,
-  started_by uuid references app.profiles (id) on delete set null,
   status text not null
     check (status in ('queued', 'running', 'completed', 'failed', 'cancelled')),
   started_at timestamptz not null default timezone('utc', now()),
@@ -380,8 +331,8 @@ create index if not exists idx_report_runs_workspace_status
 -- Settings
 -- ---------------------------------------------------------------------------
 
-create table if not exists app.user_settings (
-  user_id uuid primary key references app.profiles (id) on delete cascade,
+create table if not exists app.app_settings (
+  id boolean primary key default true,
   theme text not null default 'dark'
     check (theme in ('light', 'dark', 'system')),
   default_view text not null default 'dashboard'
@@ -392,7 +343,8 @@ create table if not exists app.user_settings (
   notifications_enabled boolean not null default true,
   settings jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default timezone('utc', now()),
-  updated_at timestamptz not null default timezone('utc', now())
+  updated_at timestamptz not null default timezone('utc', now()),
+  constraint app_settings_single_row check (id = true)
 );
 
 create table if not exists app.workspace_settings (
@@ -412,13 +364,12 @@ create table if not exists app.workspace_settings (
 );
 
 -- ---------------------------------------------------------------------------
--- Indexing, scans, automation, audit
+-- Jobs and audit
 -- ---------------------------------------------------------------------------
 
 create table if not exists app.scan_jobs (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid not null references app.workspaces (id) on delete cascade,
-  created_by uuid references app.profiles (id) on delete set null,
   job_type text not null
     check (job_type in ('index_workspace', 'reindex_files', 'metadata_extract', 'duplicate_detection')),
   status text not null
@@ -437,11 +388,11 @@ create index if not exists idx_scan_jobs_workspace_status
 create table if not exists app.audit_events (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid references app.workspaces (id) on delete cascade,
-  actor_user_id uuid references app.profiles (id) on delete set null,
+  actor_label text,
   entity_type text not null
     check (entity_type in (
       'workspace', 'folder', 'file', 'file_version', 'report', 'settings',
-      'rule', 'share', 'member'
+      'rule', 'share', 'scan_job'
     )),
   entity_id uuid,
   action text not null,
@@ -456,16 +407,8 @@ create index if not exists idx_audit_events_workspace_created_at
 -- Triggers
 -- ---------------------------------------------------------------------------
 
-create trigger trg_profiles_updated_at
-before update on app.profiles
-for each row execute function app.set_updated_at();
-
 create trigger trg_workspaces_updated_at
 before update on app.workspaces
-for each row execute function app.set_updated_at();
-
-create trigger trg_workspace_members_updated_at
-before update on app.workspace_members
 for each row execute function app.set_updated_at();
 
 create trigger trg_folders_updated_at
@@ -496,8 +439,8 @@ create trigger trg_report_definitions_updated_at
 before update on app.report_definitions
 for each row execute function app.set_updated_at();
 
-create trigger trg_user_settings_updated_at
-before update on app.user_settings
+create trigger trg_app_settings_updated_at
+before update on app.app_settings
 for each row execute function app.set_updated_at();
 
 create trigger trg_workspace_settings_updated_at
@@ -505,218 +448,10 @@ before update on app.workspace_settings
 for each row execute function app.set_updated_at();
 
 -- ---------------------------------------------------------------------------
--- RLS
--- ---------------------------------------------------------------------------
-
-alter table app.profiles enable row level security;
-alter table app.workspaces enable row level security;
-alter table app.workspace_members enable row level security;
-alter table app.folders enable row level security;
-alter table app.files enable row level security;
-alter table app.file_versions enable row level security;
-alter table app.file_metadata enable row level security;
-alter table app.tags enable row level security;
-alter table app.file_tags enable row level security;
-alter table app.file_shares enable row level security;
-alter table app.saved_views enable row level security;
-alter table app.organizer_rules enable row level security;
-alter table app.report_definitions enable row level security;
-alter table app.report_runs enable row level security;
-alter table app.user_settings enable row level security;
-alter table app.workspace_settings enable row level security;
-alter table app.scan_jobs enable row level security;
-alter table app.audit_events enable row level security;
-
-create policy "profiles_select_own_or_member_visible"
-on app.profiles for select
-using (
-  id = auth.uid()
-  or exists (
-    select 1
-    from app.workspace_members wm_self
-    join app.workspace_members wm_other
-      on wm_self.workspace_id = wm_other.workspace_id
-    where wm_self.user_id = auth.uid()
-      and wm_other.user_id = profiles.id
-      and wm_self.status = 'active'
-      and wm_other.status = 'active'
-  )
-);
-
-create policy "profiles_update_own"
-on app.profiles for update
-using (id = auth.uid())
-with check (id = auth.uid());
-
-create policy "workspaces_member_access"
-on app.workspaces for select
-using (app.is_workspace_member(id));
-
-create policy "workspaces_owner_insert"
-on app.workspaces for insert
-with check (owner_user_id = auth.uid());
-
-create policy "workspaces_admin_update"
-on app.workspaces for update
-using (
-  exists (
-    select 1
-    from app.workspace_members wm
-    where wm.workspace_id = workspaces.id
-      and wm.user_id = auth.uid()
-      and wm.role in ('owner', 'admin')
-      and wm.status = 'active'
-  )
-);
-
-create policy "workspace_members_member_select"
-on app.workspace_members for select
-using (app.is_workspace_member(workspace_id));
-
-create policy "workspace_members_admin_manage"
-on app.workspace_members for all
-using (
-  exists (
-    select 1
-    from app.workspace_members wm
-    where wm.workspace_id = workspace_members.workspace_id
-      and wm.user_id = auth.uid()
-      and wm.role in ('owner', 'admin')
-      and wm.status = 'active'
-  )
-)
-with check (
-  exists (
-    select 1
-    from app.workspace_members wm
-    where wm.workspace_id = workspace_members.workspace_id
-      and wm.user_id = auth.uid()
-      and wm.role in ('owner', 'admin')
-      and wm.status = 'active'
-  )
-);
-
-create policy "folders_member_access"
-on app.folders for all
-using (app.is_workspace_member(workspace_id))
-with check (app.is_workspace_member(workspace_id));
-
-create policy "files_member_access"
-on app.files for all
-using (app.is_workspace_member(workspace_id))
-with check (app.is_workspace_member(workspace_id));
-
-create policy "file_versions_member_access"
-on app.file_versions for all
-using (
-  exists (
-    select 1
-    from app.files f
-    where f.id = file_versions.file_id
-      and app.is_workspace_member(f.workspace_id)
-  )
-)
-with check (
-  exists (
-    select 1
-    from app.files f
-    where f.id = file_versions.file_id
-      and app.is_workspace_member(f.workspace_id)
-  )
-);
-
-create policy "file_metadata_member_access"
-on app.file_metadata for all
-using (
-  exists (
-    select 1
-    from app.files f
-    where f.id = file_metadata.file_id
-      and app.is_workspace_member(f.workspace_id)
-  )
-)
-with check (
-  exists (
-    select 1
-    from app.files f
-    where f.id = file_metadata.file_id
-      and app.is_workspace_member(f.workspace_id)
-  )
-);
-
-create policy "tags_member_access"
-on app.tags for all
-using (app.is_workspace_member(workspace_id))
-with check (app.is_workspace_member(workspace_id));
-
-create policy "file_tags_member_access"
-on app.file_tags for all
-using (
-  exists (
-    select 1
-    from app.files f
-    where f.id = file_tags.file_id
-      and app.is_workspace_member(f.workspace_id)
-  )
-)
-with check (
-  exists (
-    select 1
-    from app.files f
-    where f.id = file_tags.file_id
-      and app.is_workspace_member(f.workspace_id)
-  )
-);
-
-create policy "file_shares_member_access"
-on app.file_shares for all
-using (app.is_workspace_member(workspace_id))
-with check (app.is_workspace_member(workspace_id));
-
-create policy "saved_views_member_access"
-on app.saved_views for all
-using (app.is_workspace_member(workspace_id))
-with check (app.is_workspace_member(workspace_id));
-
-create policy "organizer_rules_member_access"
-on app.organizer_rules for all
-using (app.is_workspace_member(workspace_id))
-with check (app.is_workspace_member(workspace_id));
-
-create policy "report_definitions_member_access"
-on app.report_definitions for all
-using (app.is_workspace_member(workspace_id))
-with check (app.is_workspace_member(workspace_id));
-
-create policy "report_runs_member_access"
-on app.report_runs for all
-using (app.is_workspace_member(workspace_id))
-with check (app.is_workspace_member(workspace_id));
-
-create policy "user_settings_own_access"
-on app.user_settings for all
-using (user_id = auth.uid())
-with check (user_id = auth.uid());
-
-create policy "workspace_settings_member_access"
-on app.workspace_settings for all
-using (app.is_workspace_member(workspace_id))
-with check (app.is_workspace_member(workspace_id));
-
-create policy "scan_jobs_member_access"
-on app.scan_jobs for all
-using (app.is_workspace_member(workspace_id))
-with check (app.is_workspace_member(workspace_id));
-
-create policy "audit_events_member_access"
-on app.audit_events for select
-using (workspace_id is null or app.is_workspace_member(workspace_id));
-
--- ---------------------------------------------------------------------------
 -- Seed recommendation notes
 -- ---------------------------------------------------------------------------
--- 1. Create a profile row for each auth.users record on signup.
--- 2. Create one personal workspace for each new user.
--- 3. Insert matching workspace_members row with role = 'owner'.
--- 4. Create workspace_settings defaults immediately after workspace creation.
--- 5. Store binary file content in Supabase Storage, and only metadata/path here.
+-- 1. Create one default workspace row for the app or for each logical vault.
+-- 2. Create one workspace_settings row per workspace immediately after creation.
+-- 3. Insert one app_settings row with id = true during bootstrap.
+-- 4. Store binary file content in Supabase Storage, and only metadata/path here.
+-- 5. Maintain folder path_cache and depth values in backend logic when moving folders.
