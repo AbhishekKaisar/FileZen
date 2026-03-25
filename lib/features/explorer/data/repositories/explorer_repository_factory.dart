@@ -11,6 +11,7 @@ class ExplorerRepositoryFactory {
   static ExplorerRepository create() {
     const useSupabase = bool.fromEnvironment('USE_SUPABASE_EXPLORER', defaultValue: false);
     const workspaceId = String.fromEnvironment('FILEZEN_WORKSPACE_ID', defaultValue: '');
+    const dbSchema = String.fromEnvironment('FILEZEN_DB_SCHEMA', defaultValue: 'app');
 
     if (!useSupabase) {
       return MockExplorerRepository();
@@ -23,6 +24,7 @@ class ExplorerRepositoryFactory {
     return SupabaseExplorerRepository(
       client: Supabase.instance.client,
       workspaceId: workspaceId.isEmpty ? null : workspaceId,
+      dbSchema: dbSchema,
     );
   }
 
@@ -38,12 +40,14 @@ class ExplorerRepositoryFactory {
   static ExplorerFileCrudRepository createFileCrud() {
     const useSupabase = bool.fromEnvironment('USE_SUPABASE_EXPLORER', defaultValue: false);
     const workspaceId = String.fromEnvironment('FILEZEN_WORKSPACE_ID', defaultValue: '');
+    const dbSchema = String.fromEnvironment('FILEZEN_DB_SCHEMA', defaultValue: 'app');
     if (!useSupabase || !_isSupabaseReady()) {
       return MockExplorerFileCrudRepository();
     }
     return SupabaseExplorerFileCrudRepository(
       Supabase.instance.client,
       workspaceId: workspaceId,
+      dbSchema: dbSchema,
     );
   }
 }

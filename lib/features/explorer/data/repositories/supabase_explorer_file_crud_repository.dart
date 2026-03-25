@@ -5,28 +5,31 @@ import 'package:uuid/uuid.dart';
 
 import '../../domain/repositories/explorer_file_crud_repository.dart';
 import '../explorer_weekday.dart';
+import 'supabase_storage_upload.dart';
 
 class SupabaseExplorerFileCrudRepository implements ExplorerFileCrudRepository {
   SupabaseExplorerFileCrudRepository(
     this._client, {
     required this.workspaceId,
+    this.dbSchema = 'app',
     this.storageBucket = 'filezen-assets',
   });
 
   final SupabaseClient _client;
   final String workspaceId;
+  final String dbSchema;
   final String storageBucket;
 
   @override
   Future<void> renameFile({required String fileId, required String newName}) async {
     final trimmed = newName.trim();
     if (trimmed.isEmpty) return;
-    await _client.from('files').update({'name': trimmed}).eq('id', fileId);
+    await _client.schema(dbSchema).from('files').update({'name': trimmed}).eq('id', fileId);
   }
 
   @override
   Future<void> softDeleteFile({required String fileId}) async {
-    await _client.from('files').update({
+    await _client.schema(dbSchema).from('files').update({
       'is_deleted': true,
       'deleted_at': DateTime.now().toUtc().toIso8601String(),
     }).eq('id', fileId);
@@ -36,6 +39,7 @@ class SupabaseExplorerFileCrudRepository implements ExplorerFileCrudRepository {
   Future<void> createUploadedFile({
     required String fileName,
     required Uint8List bytes,
+    String? localPath,
     String? contentType,
   }) async {
     final trimmed = fileName.trim();
@@ -53,14 +57,14 @@ class SupabaseExplorerFileCrudRepository implements ExplorerFileCrudRepository {
     final nowLocal = DateTime.now();
     final dayLabel = ExplorerWeekday.english(nowLocal);
 
-    await _client.storage.from(storageBucket).uploadBinary(
-          objectPath,
-          bytes,
-          fileOptions: FileOptions(
-            contentType: contentType ?? 'application/octet-stream',
-            upsert: false,
-          ),
-        );
+    await uploadFileToSupabaseStorage(
+      client: _client,
+      bucket: storageBucket,
+      objectPath: objectPath,
+      bytes: bytes,
+      localPath: localPath,
+      contentType: contentType,
+    );
 
     final insertPayload = <String, dynamic>{
       'id': rowId,
@@ -83,7 +87,7 @@ class SupabaseExplorerFileCrudRepository implements ExplorerFileCrudRepository {
       insertPayload['mime_type'] = contentType;
     }
 
-    await _client.from('files').insert(insertPayload);
+    await _client.schema(dbSchema).from('files').insert(insertPayload);
   }
 
   static String? _fileExtension(String name) {

@@ -32,6 +32,7 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
   ExplorerKindFilter _activeFilter = ExplorerKindFilter.all;
   ExplorerSortBy _sortBy = ExplorerSortBy.nameAsc;
   bool _uploading = false;
+  String? _lastErrorMessage;
   static const List<String> _dayOrder = [
     'Monday',
     'Tuesday',
@@ -65,6 +66,7 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
   Future<void> _loadItems() async {
     setState(() {
       _state = _ExplorerState.loading;
+      _lastErrorMessage = null;
     });
     try {
       final query = ExplorerQuery(
@@ -78,10 +80,13 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
         _allItems = items;
         _state = items.isEmpty ? _ExplorerState.empty : _ExplorerState.ready;
       });
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('Explorer load failed: $e');
+      debugPrintStack(stackTrace: st);
       if (!mounted) return;
       setState(() {
         _state = _ExplorerState.error;
+        _lastErrorMessage = e.toString();
       });
     }
   }
@@ -99,10 +104,13 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
         _allItems = items;
         _state = items.isEmpty ? _ExplorerState.empty : _ExplorerState.ready;
       });
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('Explorer quiet refresh failed: $e');
+      debugPrintStack(stackTrace: st);
       if (!mounted) return;
       setState(() {
         _state = _ExplorerState.error;
+        _lastErrorMessage = e.toString();
       });
     }
   }
@@ -341,7 +349,9 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
         return _buildStatusCard(
           icon: Icons.error_outline,
           title: 'Could not load files',
-          subtitle: 'Please retry. Network or backend service may be unavailable.',
+          subtitle: _lastErrorMessage == null || _lastErrorMessage!.trim().isEmpty
+              ? 'Please retry. Network or backend service may be unavailable.'
+              : 'Please retry. ${_lastErrorMessage!}',
           actionLabel: 'Retry',
           onTap: _loadItems,
         );

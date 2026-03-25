@@ -212,9 +212,12 @@ create table if not exists app.tags (
   name text not null,
   color_hex text,
   created_at timestamptz not null default timezone('utc', now()),
-  updated_at timestamptz not null default timezone('utc', now()),
-  unique (workspace_id, lower(name))
+  updated_at timestamptz not null default timezone('utc', now())
 );
+
+create unique index if not exists uq_tags_workspace_lower_name
+  on app.tags (workspace_id, lower(name));
+
 
 create table if not exists app.file_tags (
   file_id uuid not null references app.files (id) on delete cascade,
