@@ -50,6 +50,30 @@ Notes:
 - `FILEZEN_WORKSPACE_ID` is required for upload/create flows in Supabase mode.
 - `FILEZEN_DB_SCHEMA` defaults to `app` if not provided.
 
+### Team Setup (safe sharing)
+Do not commit real keys to this repository. Share values privately (password manager, vault, or secure chat).
+
+Required values for each team member:
+- `SUPABASE_URL` (Dashboard -> Settings -> API -> Project URL)
+- `SUPABASE_ANON_KEY` (Dashboard -> Settings -> API -> Project API keys -> `anon public`)
+- `FILEZEN_WORKSPACE_ID` (Table Editor -> `app.workspaces` -> `id`)
+- `FILEZEN_DB_SCHEMA` (`app` by default)
+
+Use placeholders in documentation and commands:
+
+```bash
+flutter run \
+  --dart-define=USE_SUPABASE_EXPLORER=true \
+  --dart-define=SUPABASE_URL=https://<project-ref>.supabase.co \
+  --dart-define=SUPABASE_ANON_KEY=<anon-key> \
+  --dart-define=FILEZEN_WORKSPACE_ID=<workspace-uuid> \
+  --dart-define=FILEZEN_DB_SCHEMA=app
+```
+
+Security note:
+- `anon` keys are designed for client apps, but still should not be hardcoded into public docs with real values.
+- Never expose `service_role` keys in app code or repository files.
+
 ## Supabase Setup
 
 ### 1) Create schema/tables
