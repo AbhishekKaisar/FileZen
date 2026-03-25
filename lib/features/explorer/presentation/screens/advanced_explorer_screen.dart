@@ -132,6 +132,7 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
       await _fileCrud.createUploadedFile(
         fileName: picked.name,
         bytes: bytes,
+        localPath: picked.path,
         contentType: null,
       );
       if (!mounted) return;
@@ -142,12 +143,18 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
         ),
       );
       await _refreshItemsQuietly();
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('Explorer upload failed: $e');
+      debugPrintStack(stackTrace: st);
       if (!mounted) return;
-      final message = e is StateError ? e.message : 'Upload failed';
+      final message = e is StateError ? e.message : 'Upload failed: ${e.toString()}';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(message),
+          content: Text(
+            message,
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
+          ),
           backgroundColor: const Color(0xFF7F2927),
         ),
       );
@@ -674,48 +681,51 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
     required VoidCallback onTap,
   }) {
     return Center(
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 520),
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: const Color(0xFF131313),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF484848).withValues(alpha: 0.2)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: const Color(0xFFAEC6FF), size: 36),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(
-                fontFamily: 'Manrope',
-                fontSize: 24,
-                fontWeight: FontWeight.w500,
-                color: Colors.white,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 520),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: const Color(0xFF131313),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF484848).withValues(alpha: 0.2)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: const Color(0xFFAEC6FF), size: 36),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontFamily: 'Manrope',
+                  fontSize: 24,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 14,
-                color: Color(0xFFACABAA),
+              const SizedBox(height: 8),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 14,
+                  color: Color(0xFFACABAA),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: onTap,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFAEC6FF),
-                foregroundColor: const Color(0xFF003D8A),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: onTap,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFAEC6FF),
+                  foregroundColor: const Color(0xFF003D8A),
+                ),
+                child: Text(actionLabel),
               ),
-              child: Text(actionLabel),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

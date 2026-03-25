@@ -50,10 +50,11 @@ class QuickAccessGrid extends StatelessWidget {
               iconColor: const Color(0xFFE4DFFF), // tertiary
               iconBgColor: const Color(0xFFE4DFFF).withValues(alpha: 0.1),
               backgroundIcon: Icons.star_border,
-              content: Row(
+              content: Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   _buildChip('Legal Docs'),
-                  const SizedBox(width: 8),
                   _buildChip('Project Zen'),
                 ],
               ),
@@ -66,11 +67,12 @@ class QuickAccessGrid extends StatelessWidget {
               iconBgColor: const Color(0xFF2E3E45), // secondary-container
               backgroundIcon: Icons.group,
               content: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildAvatar('https://lh3.googleusercontent.com/aida-public/AB6AXuCcRdt7j875Wniif9U-uJRXmsSpV7L2N9QnH0MTcecBVRhsRbuL4iXr_dyldJkWlSkAhkDASJ8rZaJ2k9cQwowecZbUKFytq0CVMVSf9kbd_2N4vEquQRnBJoCY2bjMyhtRMTOQpQYxTYxjQvoLKMpDAjsBVDtX57VEXfmbL4wGpSTfmRhH7EBhUl3d8LHoUYcAhgWXtIgpcGifr8FuTn7IzjZROeTvAUgyEf1l1cSYozoyAFveOLavfwFNJ9Lf6v-X_heFZpaIbLA-'),
+                  _buildAvatar(label: 'AL', color: const Color(0xFF5A6C78)),
                   Transform.translate(
                     offset: const Offset(-10, 0),
-                    child: _buildAvatar('https://lh3.googleusercontent.com/aida-public/AB6AXuCdTdx3U88l7sphZyWM7Urg7DwwclKFrqmtb8suDfIQXTl265U33SEAfMQetRTC_O9DhcUH1I91HBsSHr-AKUsPVaozkxM9LeN845W3af8nZqJsHoHZLTRy1PyDxwn1RmKzJ8qjr7LSghT_ek89c2IxwMsg2GeEqKV9qLGKgutgsg098DvHsCH_R8sICyOKTh8QrqfgJxvX8vPZ7nkqnt7PlBTU0WejqGCgf2TL2-ttf9Bzed49lhTJBggOCZ1hbxo7cnoiYbpI3YI4'),
+                    child: _buildAvatar(label: 'SM', color: const Color(0xFF7A665A)),
                   ),
                   Transform.translate(
                     offset: const Offset(-20, 0),
@@ -170,12 +172,16 @@ class QuickAccessGrid extends StatelessWidget {
       children: [
         Icon(icon, size: 16, color: iconColor),
         const SizedBox(width: 12),
-        Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 14,
-            color: isPrimary ? Colors.white : const Color(0xFFACABAA),
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              color: isPrimary ? Colors.white : const Color(0xFFACABAA),
+            ),
           ),
         ),
       ],
@@ -201,16 +207,22 @@ class QuickAccessGrid extends StatelessWidget {
     );
   }
 
-  Widget _buildAvatar(String url) {
+  Widget _buildAvatar({required String label, required Color color}) {
     return Container(
       width: 32,
       height: 32,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
+        color: color,
         border: Border.all(color: const Color(0xFF0E0E0E), width: 2),
-        image: DecorationImage(
-          image: NetworkImage(url),
-          fit: BoxFit.cover,
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
