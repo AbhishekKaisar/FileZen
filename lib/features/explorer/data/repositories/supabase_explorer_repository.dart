@@ -8,10 +8,12 @@ class SupabaseExplorerRepository implements ExplorerRepository {
   SupabaseExplorerRepository({
     required SupabaseClient client,
     this.workspaceId,
+    this.dbSchema = 'app',
   }) : _client = client;
 
   final SupabaseClient _client;
   final String? workspaceId;
+  final String dbSchema;
 
   @override
   Future<List<ExplorerItem>> fetchItems(ExplorerQuery query) async {
@@ -52,7 +54,7 @@ class SupabaseExplorerRepository implements ExplorerRepository {
   }
 
   Future<List<Map<String, dynamic>>> _queryFiles(ExplorerQuery query) async {
-    dynamic request = _client.from('files').select(
+    dynamic request = _client.schema(dbSchema).from('files').select(
           'id,name,size_bytes,updated_at,metadata,organizer_block_label,organizer_day_of_week,folders(name)',
         );
 

@@ -39,6 +39,7 @@ class MockExplorerFileCrudRepository implements ExplorerFileCrudRepository {
   Future<void> createUploadedFile({
     required String fileName,
     required Uint8List bytes,
+    String? localPath,
     String? contentType,
   }) async {
     MockExplorerDataStore.instance.ensureInitialized();
