@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -600,6 +603,8 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
       onSelected: (value) async {
         if (value == 'download') {
           await _downloadFile(item);
+        } else if (value == 'preview') {
+          await _previewFile(item);
         } else if (value == 'copy') {
           await _copyFile(item);
         } else if (value == 'rename') {
@@ -622,6 +627,7 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
           ];
         }
         return const [
+          PopupMenuItem(value: 'preview', child: Text('Preview')),
           PopupMenuItem(value: 'download', child: Text('Download')),
           PopupMenuItem(value: 'copy', child: Text('Copy')),
           PopupMenuItem(value: 'rename', child: Text('Rename')),
@@ -664,6 +670,45 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Could not download file'), backgroundColor: Color(0xFF7F2927)),
+      );
+    }
+  }
+
+  Future<void> _previewFile(ExplorerItem item) async {
+    final id = item.id;
+    if (id == null || id.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Preview is unavailable for this item'),
+          backgroundColor: Color(0xFF7F2927),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final bytes = await _fileCrud.downloadFileBytes(
+        fileId: id,
+        storageBucket: item.storageBucket ?? '',
+        storageObjectPath: item.storageObjectPath ?? '',
+      );
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (context) => _FilePreviewDialog(fileName: item.name, bytes: bytes),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final reason = e.toString();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not load file preview: $reason',
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
+          ),
+          backgroundColor: Color(0xFF7F2927),
+        ),
       );
     }
   }
@@ -1035,5 +1080,90 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
         ),
       ),
     );
+  }
+}
+
+class _FilePreviewDialog extends StatelessWidget {
+  const _FilePreviewDialog({
+    required this.fileName,
+    required this.bytes,
+  });
+
+  final String fileName;
+  final List<int> bytes;
+
+  @override
+  Widget build(BuildContext context) {
+    final ext = _ext(fileName);
+    final isImage = const {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'}.contains(ext);
+    final isText = const {'txt', 'md', 'json', 'csv', 'yaml', 'yml', 'xml', 'log', 'ini'}.contains(ext);
+
+    return AlertDialog(
+      backgroundColor: const Color(0xFF131313),
+      title: Text(
+        'Preview: $fileName',
+        style: const TextStyle(color: Colors.white),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      content: SizedBox(
+        width: 600,
+        height: 420,
+        child: _buildPreviewBody(isImage: isImage, isText: isText),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close', style: TextStyle(color: Color(0xFFAEC6FF))),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPreviewBody({required bool isImage, required bool isText}) {
+    if (isImage) {
+      return InteractiveViewer(
+        minScale: 0.5,
+        maxScale: 4.0,
+        child: Center(child: Image.memory(Uint8List.fromList(bytes), fit: BoxFit.contain)),
+      );
+    }
+    if (isText) {
+      final text = utf8.decode(bytes, allowMalformed: true);
+      final preview = text.length > 20000 ? '${text.substring(0, 20000)}\n\n... (truncated)' : text;
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0E0E0E),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFF484848).withValues(alpha: 0.25)),
+        ),
+        child: SingleChildScrollView(
+          child: SelectableText(
+            preview,
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              color: Color(0xFFE2E2E2),
+              fontSize: 13,
+              height: 1.35,
+            ),
+          ),
+        ),
+      );
+    }
+    return const Center(
+      child: Text(
+        'Preview currently supports text and images.\nUse Download for other file types.',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: Color(0xFFACABAA), height: 1.4),
+      ),
+    );
+  }
+
+  static String _ext(String fileName) {
+    final dot = fileName.lastIndexOf('.');
+    if (dot <= 0 || dot == fileName.length - 1) return '';
+    return fileName.substring(dot + 1).toLowerCase();
   }
 }

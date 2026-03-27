@@ -7,6 +7,8 @@ import '../explorer_weekday.dart';
 import '../mock_explorer_data_store.dart';
 
 class MockExplorerFileCrudRepository implements ExplorerFileCrudRepository {
+  static final Map<String, Uint8List> _uploadedBytesById = <String, Uint8List>{};
+
   @override
   Future<void> renameFile({required String fileId, required String newName}) async {
     MockExplorerDataStore.instance.ensureInitialized();
@@ -77,6 +79,7 @@ class MockExplorerFileCrudRepository implements ExplorerFileCrudRepository {
   }) async {
     MockExplorerDataStore.instance.ensureInitialized();
     MockExplorerDataStore.instance.removeById(fileId);
+    _uploadedBytesById.remove(fileId);
   }
 
   @override
@@ -118,6 +121,10 @@ class MockExplorerFileCrudRepository implements ExplorerFileCrudRepository {
         isDeleted: false,
       ),
     );
+    final srcBytes = _uploadedBytesById[fileId];
+    if (srcBytes != null) {
+      _uploadedBytesById[id] = Uint8List.fromList(srcBytes);
+    }
   }
 
   @override
@@ -126,6 +133,10 @@ class MockExplorerFileCrudRepository implements ExplorerFileCrudRepository {
     required String storageBucket,
     required String storageObjectPath,
   }) async {
+    final inMemory = _uploadedBytesById[fileId];
+    if (inMemory != null) {
+      return Uint8List.fromList(inMemory);
+    }
     return Uint8List.fromList('Mock file content for $fileId'.codeUnits);
   }
 
@@ -155,8 +166,11 @@ class MockExplorerFileCrudRepository implements ExplorerFileCrudRepository {
         updatedLabel: 'Updated just now',
         blockName: block,
         dayOfWeek: day,
+        storageBucket: 'mock-bucket',
+        storageObjectPath: 'mock/$id/$trimmed',
       ),
     );
+    _uploadedBytesById[id] = Uint8List.fromList(bytes);
   }
 
   String _replaceLastPathSegment(String path, String newLeaf) {
