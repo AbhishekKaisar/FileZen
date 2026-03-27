@@ -90,6 +90,24 @@ Run:
 
 The baseline policy file expects a `workspace_id` claim in the JWT for end-user sessions.
 
+## Faculty Demo Checklist (Operating Systems Project)
+
+Run the app with Supabase enabled, then verify:
+
+1. **Block-based + day-wise organization**
+   - Upload files from `Explorer` (floating upload button).
+   - Use file menu -> `Set block/day` to assign block and weekday.
+   - Confirm list groups files by block and weekday.
+2. **Database-backed reporting**
+   - Open `Reports`.
+   - Verify metrics are loaded from Supabase (`files` table).
+   - Click `Generate Report` and confirm a new row appears in `app.report_runs`.
+3. **Organizer automation proof**
+   - Open `Settings` (`/settings`) and click `Apply Protocols`.
+   - Confirm files are reclassified by extension and day and a completed `app.scan_jobs` row is created.
+4. **Android interface**
+   - Run on Android and repeat steps 1-3.
+
 ## Quality Checks
 
 Run before pushing changes:

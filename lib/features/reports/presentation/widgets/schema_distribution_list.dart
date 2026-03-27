@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../../data/reports_repository.dart';
+
 class SchemaDistributionList extends StatelessWidget {
-  const SchemaDistributionList({super.key});
+  const SchemaDistributionList({
+    super.key,
+    required this.rows,
+    required this.recentRuns,
+  });
+
+  final List<BlockDayRow> rows;
+  final List<ReportRunRow> recentRuns;
 
   @override
   Widget build(BuildContext context) {
@@ -44,10 +53,10 @@ class SchemaDistributionList extends StatelessWidget {
               child: Column(
                 children: [
                   _buildHeaderRow(),
-                  _buildTableRow(Icons.description, const Color(0xFFAEC6FF), 'Metadata_Cluster_A', 'Relational SQL', '42,019', '+4.2%', 'Optimized', const Color(0xFFAEC6FF)),
-                  _buildTableRow(Icons.image, const Color(0xFFE4DFFF), 'Media_Assets_Archive', 'Object Storage', '882,110', '+12.8%', 'Syncing', const Color(0xFF2E3E45), textColor: const Color(0xFFB1C2CB)),
-                  _buildTableRow(Icons.shield, const Color(0xFFACABAA), 'System_Logs_Secure', 'Encrypted Blob', '2,441,009', '0.0%', 'Locked', const Color(0xFF252626), textColor: const Color(0xFFACABAA)),
-                  _buildTableRow(Icons.table_chart, const Color(0xFFAEC6FF), 'User_Preference_Store', 'KV Store', '12,402', '+1.4%', 'Optimized', const Color(0xFFAEC6FF)),
+                  if (rows.isEmpty)
+                    _buildEmptyRow()
+                  else
+                    ...rows.take(14).map(_buildDataRow),
                 ],
               ),
             ),
@@ -63,13 +72,14 @@ class SchemaDistributionList extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Showing 4 of 24 active schemas', style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: Color(0xFFACABAA))),
-                Row(
-                  children: [
-                    IconButton(icon: const Icon(Icons.chevron_left, color: Color(0xFFACABAA)), onPressed: null),
-                    IconButton(icon: const Icon(Icons.chevron_right, color: Color(0xFFACABAA)), onPressed: () {}),
-                  ],
-                )
+                Text(
+                  'Showing ${rows.isEmpty ? 0 : rows.length.clamp(0, 14)} of ${rows.length} block/day groups',
+                  style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: Color(0xFFACABAA)),
+                ),
+                Text(
+                  recentRuns.isEmpty ? 'No report runs yet' : 'Latest run: ${recentRuns.first.status.toUpperCase()}',
+                  style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: Color(0xFFACABAA)),
+                ),
               ],
             ),
           )
@@ -86,21 +96,37 @@ class SchemaDistributionList extends StatelessWidget {
       ),
       child: const Row(
         children: [
-          Expanded(flex: 3, child: Text('SCHEMA NAME', style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.5, color: Color(0xFFACABAA)))),
-          Expanded(flex: 2, child: Text('TYPE', style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.5, color: Color(0xFFACABAA)))),
-          Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('RECORDS', style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.5, color: Color(0xFFACABAA))))),
-          Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('GROWTH', style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.5, color: Color(0xFFACABAA))))),
-          Expanded(flex: 1, child: Padding(padding: EdgeInsets.only(left: 32.0), child: Text('STATUS', style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.5, color: Color(0xFFACABAA))))),
+          Expanded(flex: 3, child: Text('BLOCK', style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.5, color: Color(0xFFACABAA)))),
+          Expanded(flex: 2, child: Text('DAY', style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.5, color: Color(0xFFACABAA)))),
+          Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('FILES', style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.5, color: Color(0xFFACABAA))))),
+          Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('SIZE', style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.5, color: Color(0xFFACABAA))))),
+          Expanded(flex: 1, child: Padding(padding: EdgeInsets.only(left: 32.0), child: Text('STATUS', style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.5, color: Color(0xFFACABAA)))),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildTableRow(IconData icon, Color iconColor, String title, String type, String records, String growth, String status, Color statusBg, {Color? textColor}) {
-    bool isPositive = growth.startsWith('+');
-    Color growthColor = isPositive ? const Color(0xFFAEC6FF) : const Color(0xFFACABAA);
-    if (!isPositive && growth != '0.0%') growthColor = const Color(0xFFEE7D77); // error (simplified logic)
-    
+  Widget _buildEmptyRow() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: const Color(0xFF484848).withValues(alpha: 0.1))),
+      ),
+      child: const Row(
+        children: [
+          Text(
+            'No classified files yet. Upload files and assign block/day to populate this view.',
+            style: TextStyle(color: Color(0xFFACABAA)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDataRow(BlockDayRow row) {
+    final status = row.fileCount > 0 ? 'Active' : 'Idle';
+    final statusColor = row.fileCount > 0 ? const Color(0xFFAEC6FF) : const Color(0xFFACABAA);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
       decoration: BoxDecoration(
@@ -110,30 +136,27 @@ class SchemaDistributionList extends StatelessWidget {
         children: [
           Expanded(
             flex: 3,
-            child: Row(
-              children: [
-                Icon(icon, color: iconColor, size: 20),
-                const SizedBox(width: 12),
-                Text(title, style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white)),
-              ],
+            child: Text(
+              row.blockLabel,
+              style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white),
             ),
           ),
           Expanded(
             flex: 2,
-            child: Text(type, style: const TextStyle(fontFamily: 'Inter', fontSize: 14, color: Color(0xFFACABAA))),
+            child: Text(row.dayOfWeek, style: const TextStyle(fontFamily: 'Inter', fontSize: 14, color: Color(0xFFACABAA))),
           ),
           Expanded(
             flex: 1,
             child: Align(
               alignment: Alignment.centerRight,
-              child: Text(records, style: const TextStyle(fontFamily: 'monospace', fontSize: 14, color: Colors.white)),
+              child: Text('${row.fileCount}', style: const TextStyle(fontFamily: 'monospace', fontSize: 14, color: Colors.white)),
             ),
           ),
           Expanded(
             flex: 1,
             child: Align(
               alignment: Alignment.centerRight,
-              child: Text(growth, style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: growthColor)),
+              child: Text(_formatBytes(row.totalBytes), style: const TextStyle(fontFamily: 'Inter', fontSize: 14, color: Color(0xFFAEC6FF))),
             ),
           ),
           Expanded(
@@ -145,7 +168,7 @@ class SchemaDistributionList extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: statusBg == const Color(0xFFAEC6FF) ? statusBg.withValues(alpha: 0.1) : statusBg,
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
@@ -155,7 +178,7 @@ class SchemaDistributionList extends StatelessWidget {
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.0,
-                      color: textColor ?? statusBg,
+                      color: statusColor,
                     ),
                   ),
                 ),
@@ -165,5 +188,18 @@ class SchemaDistributionList extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var size = bytes.toDouble();
+    var index = 0;
+    while (size >= 1024 && index < units.length - 1) {
+      size /= 1024;
+      index += 1;
+    }
+    final display = size >= 10 || index == 0 ? size.toStringAsFixed(0) : size.toStringAsFixed(1);
+    return '$display ${units[index]}';
   }
 }

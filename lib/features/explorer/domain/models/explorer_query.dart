@@ -15,9 +15,11 @@ class ExplorerQuery {
     this.search = '',
     this.kind = ExplorerKindFilter.all,
     this.sortBy = ExplorerSortBy.nameAsc,
+    this.includeDeleted = false,
   });
 
   final String search;
   final ExplorerKindFilter kind;
   final ExplorerSortBy sortBy;
+  final bool includeDeleted;
 }
