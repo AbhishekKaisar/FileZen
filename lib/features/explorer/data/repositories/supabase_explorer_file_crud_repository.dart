@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import '../file_metadata_pipeline.dart';
 import '../../domain/repositories/explorer_file_crud_repository.dart';
 import '../explorer_weekday.dart';
 import 'supabase_storage_upload.dart';
@@ -78,7 +80,16 @@ class SupabaseExplorerFileCrudRepository implements ExplorerFileCrudRepository {
       }
     }
     if (bucket != null && bucket.isNotEmpty && path != null && path.isNotEmpty) {
-      await _client.storage.from(bucket).remove([path]);
+      try {
+        await _client.storage.from(bucket).remove([path]);
+      } catch (_) {
+        // Continue deleting DB rows even if storage cleanup fails.
+      }
+    }
+    try {
+      await _client.schema(dbSchema).from('file_blobs').delete().eq('file_id', fileId);
+    } catch (_) {
+      // Ignore if fallback table is not present yet.
     }
     await _client.schema(dbSchema).from('files').delete().eq('id', fileId);
   }
@@ -103,11 +114,11 @@ class SupabaseExplorerFileCrudRepository implements ExplorerFileCrudRepository {
     final row = rows.first;
     final srcBucket = row['storage_bucket']?.toString() ?? storageBucket;
     final srcObjectPath = row['storage_object_path']?.toString() ?? '';
-    if (srcObjectPath.isEmpty) {
-      throw StateError('Missing storage path for copy.');
-    }
-
-    final sourceBytes = await _client.storage.from(srcBucket).download(srcObjectPath);
+    final sourceBytes = await downloadFileBytes(
+      fileId: fileId,
+      storageBucket: srcBucket,
+      storageObjectPath: srcObjectPath,
+    );
     final desiredName = (row['name']?.toString() ?? currentName).trim();
     final resolvedName = await _resolveNameForCopy(
       desiredName: desiredName,
@@ -121,25 +132,45 @@ class SupabaseExplorerFileCrudRepository implements ExplorerFileCrudRepository {
     final safeName = _safeFileName(resolvedName);
     final objectPath = '$workspaceId/$newRowId/$safeName';
     await _client.storage.from(srcBucket).uploadBinary(objectPath, sourceBytes);
+    final nowUtc = DateTime.now().toUtc();
+    final ext = (row['extension']?.toString() ?? FileMetadataPipeline.fileExtension(resolvedName) ?? '').toLowerCase();
+    final mime = (row['mime_type']?.toString() ?? '').toLowerCase();
+    final checksum = FileMetadataPipeline.checksumFnv1a64(sourceBytes);
+    final mediaCategory = FileMetadataPipeline.mediaCategoryFor(ext: ext, mime: mime);
     await _client.schema(dbSchema).from('files').insert({
       'id': newRowId,
       'workspace_id': workspaceId,
       'name': resolvedName,
       'original_name': row['name']?.toString() ?? currentName,
-      'extension': row['extension']?.toString() ?? _fileExtension(resolvedName),
+      'extension': ext.isEmpty ? null : ext,
       'mime_type': row['mime_type']?.toString(),
       'size_bytes': (row['size_bytes'] as num?)?.toInt() ?? sourceBytes.length,
+      'checksum_sha256': checksum,
+      'media_category': mediaCategory,
       'storage_bucket': srcBucket,
       'storage_object_path': objectPath,
       'storage_provider': 'supabase',
+      'indexed_at': nowUtc.toIso8601String(),
       'organizer_block_label': blockName,
       'organizer_day_of_week': dayOfWeek,
       'metadata': {
         'block': blockName,
         'day_of_week': dayOfWeek,
         'copied_from': fileId,
+        'checksum_fnv1a64': checksum,
       },
     });
+    await _client.schema(dbSchema).from('file_metadata').upsert({
+      'file_id': newRowId,
+      'fs_metadata': {
+        'source': 'copy',
+        'original_file_id': fileId,
+        'extension': ext,
+        'mime_type': mime,
+        'size_bytes': sourceBytes.length,
+      },
+    });
+    await _upsertDbBlob(fileId: newRowId, bytes: sourceBytes);
   }
 
   @override
@@ -148,10 +179,31 @@ class SupabaseExplorerFileCrudRepository implements ExplorerFileCrudRepository {
     required String storageBucket,
     required String storageObjectPath,
   }) async {
-    if (storageBucket.isEmpty || storageObjectPath.isEmpty) {
-      throw StateError('Missing storage location for download.');
+    var bucket = storageBucket;
+    var objectPath = storageObjectPath;
+    if (bucket.isEmpty || objectPath.isEmpty) {
+      final rows = await _client
+          .schema(dbSchema)
+          .from('files')
+          .select('storage_bucket,storage_object_path')
+          .eq('id', fileId)
+          .limit(1);
+      if (rows.isNotEmpty) {
+        final row = rows.first;
+        bucket = row['storage_bucket']?.toString() ?? '';
+        objectPath = row['storage_object_path']?.toString() ?? '';
+      }
     }
-    return _client.storage.from(storageBucket).download(storageObjectPath);
+    if (bucket.isNotEmpty && objectPath.isNotEmpty) {
+      try {
+        return await _client.storage.from(bucket).download(objectPath);
+      } catch (_) {
+        // Fall back to DB blob content when storage object is missing or denied.
+      }
+    }
+    final fromDb = await _downloadDbBlob(fileId);
+    if (fromDb != null) return fromDb;
+    throw StateError('File content unavailable in storage and database blob fallback.');
   }
 
   @override
@@ -172,18 +224,26 @@ class SupabaseExplorerFileCrudRepository implements ExplorerFileCrudRepository {
     final rowId = const Uuid().v4();
     final safeName = _safeFileName(trimmed);
     final objectPath = '$workspaceId/$rowId/$safeName';
-    final ext = _fileExtension(trimmed);
+    final ext = FileMetadataPipeline.fileExtension(trimmed);
+    final mime = (contentType ?? '').toLowerCase();
+    final block = FileMetadataPipeline.blockFor(ext: (ext ?? '').toLowerCase(), mime: mime);
+    final category = FileMetadataPipeline.mediaCategoryFor(ext: (ext ?? '').toLowerCase(), mime: mime);
+    final checksum = FileMetadataPipeline.checksumFnv1a64(bytes);
     final nowLocal = DateTime.now();
     final dayLabel = ExplorerWeekday.english(nowLocal);
 
-    await uploadFileToSupabaseStorage(
-      client: _client,
-      bucket: storageBucket,
-      objectPath: objectPath,
-      bytes: bytes,
-      localPath: localPath,
-      contentType: contentType,
-    );
+    try {
+      await uploadFileToSupabaseStorage(
+        client: _client,
+        bucket: storageBucket,
+        objectPath: objectPath,
+        bytes: bytes,
+        localPath: localPath,
+        contentType: contentType,
+      );
+    } catch (_) {
+      // Keep DB insert path alive for student-demo mode (preview via DB blob fallback).
+    }
 
     var resolvedName = trimmed;
     final insertPayload = <String, dynamic>{
@@ -192,14 +252,19 @@ class SupabaseExplorerFileCrudRepository implements ExplorerFileCrudRepository {
       'name': resolvedName,
       'original_name': trimmed,
       'size_bytes': bytes.length,
+      'checksum_sha256': checksum,
+      'media_category': category,
       'storage_bucket': storageBucket,
       'storage_object_path': objectPath,
       'storage_provider': 'supabase',
-      'organizer_block_label': 'Primary Archive',
+      'indexed_at': DateTime.now().toUtc().toIso8601String(),
+      'organizer_block_label': block,
       'organizer_day_of_week': dayLabel,
       'metadata': <String, dynamic>{
-        'block': 'Primary Archive',
+        'block': block,
         'day_of_week': dayLabel,
+        'checksum_fnv1a64': checksum,
+        if (localPath != null && localPath.isNotEmpty) 'local_path': localPath,
       },
     };
     if (ext != null) {
@@ -215,12 +280,24 @@ class SupabaseExplorerFileCrudRepository implements ExplorerFileCrudRepository {
       insertPayload['name'] = resolvedName;
       await _client.schema(dbSchema).from('files').insert(insertPayload);
     }
-  }
-
-  static String? _fileExtension(String name) {
-    final dot = name.lastIndexOf('.');
-    if (dot <= 0 || dot == name.length - 1) return null;
-    return name.substring(dot + 1).toLowerCase();
+    final textSnippet = FileMetadataPipeline.maybeExtractTextSnippet(
+      bytes: bytes,
+      ext: (ext ?? '').toLowerCase(),
+      mime: mime,
+    );
+    await _client.schema(dbSchema).from('file_metadata').upsert({
+      'file_id': rowId,
+      'fs_metadata': {
+        'extension': ext,
+        'mime_type': mime,
+        'size_bytes': bytes.length,
+        if (localPath != null && localPath.isNotEmpty) 'local_path': localPath,
+      },
+      'exif': {},
+      if (textSnippet != null) 'language_code': 'und',
+      if (textSnippet != null) 'word_count': textSnippet.split(RegExp(r'\s+')).where((t) => t.trim().isNotEmpty).length,
+    });
+    await _upsertDbBlob(fileId: rowId, bytes: bytes);
   }
 
   static String _safeFileName(String name) {
@@ -268,5 +345,27 @@ class SupabaseExplorerFileCrudRepository implements ExplorerFileCrudRepository {
     final base = fileName.substring(0, dot);
     final ext = fileName.substring(dot);
     return '${base}_copy_$ts$ext';
+  }
+
+  Future<void> _upsertDbBlob({required String fileId, required Uint8List bytes}) async {
+    await _client.schema(dbSchema).from('file_blobs').upsert({
+      'file_id': fileId,
+      'content_base64': base64Encode(bytes),
+      'byte_size': bytes.length,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    });
+  }
+
+  Future<Uint8List?> _downloadDbBlob(String fileId) async {
+    final rows = await _client
+        .schema(dbSchema)
+        .from('file_blobs')
+        .select('content_base64')
+        .eq('file_id', fileId)
+        .limit(1);
+    if (rows.isEmpty) return null;
+    final encoded = rows.first['content_base64']?.toString();
+    if (encoded == null || encoded.isEmpty) return null;
+    return Uint8List.fromList(base64Decode(encoded));
   }
 }
