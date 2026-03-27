@@ -20,6 +20,13 @@ class MockExplorerDataStore {
     _items.removeWhere((e) => e.id == id);
   }
 
+  ExplorerItem? itemById(String id) {
+    for (final item in _items) {
+      if (item.id == id) return item;
+    }
+    return null;
+  }
+
   void updateItem(ExplorerItem next) {
     final i = _items.indexWhere((e) => e.id == next.id);
     if (i >= 0) {

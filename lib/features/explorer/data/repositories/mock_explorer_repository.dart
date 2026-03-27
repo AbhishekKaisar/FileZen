@@ -34,6 +34,9 @@ class MockExplorerRepository implements ExplorerRepository {
 
     final search = query.search.trim().toLowerCase();
     final filtered = items.where((item) {
+      if (item.isDeleted != query.includeDeleted) {
+        return false;
+      }
       if (query.kind == ExplorerKindFilter.folders && !item.isFolder) {
         return false;
       }

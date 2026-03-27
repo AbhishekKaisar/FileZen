@@ -30,9 +30,103 @@ class MockExplorerFileCrudRepository implements ExplorerFileCrudRepository {
   }
 
   @override
+  Future<void> updateOrganizerPlacement({
+    required String fileId,
+    required String blockName,
+    required String dayOfWeek,
+  }) async {
+    MockExplorerDataStore.instance.ensureInitialized();
+    final items = MockExplorerDataStore.instance.snapshot();
+    ExplorerItem? existing;
+    for (final e in items) {
+      if (e.id == fileId) {
+        existing = e;
+        break;
+      }
+    }
+    if (existing == null || existing.isFolder) return;
+    MockExplorerDataStore.instance.updateItem(
+      existing.copyWith(
+        blockName: blockName.trim().isEmpty ? 'Unassigned Block' : blockName.trim(),
+        dayOfWeek: dayOfWeek.trim().isEmpty ? 'Unscheduled' : dayOfWeek.trim(),
+      ),
+    );
+  }
+
+  @override
   Future<void> softDeleteFile({required String fileId}) async {
     MockExplorerDataStore.instance.ensureInitialized();
+    final existing = MockExplorerDataStore.instance.itemById(fileId);
+    if (existing == null) return;
+    MockExplorerDataStore.instance.updateItem(existing.copyWith(isDeleted: true));
+  }
+
+  @override
+  Future<void> restoreFile({required String fileId}) async {
+    MockExplorerDataStore.instance.ensureInitialized();
+    final existing = MockExplorerDataStore.instance.itemById(fileId);
+    if (existing == null) return;
+    MockExplorerDataStore.instance.updateItem(existing.copyWith(isDeleted: false));
+  }
+
+  @override
+  Future<void> hardDeleteFile({
+    required String fileId,
+    String? storageBucket,
+    String? storageObjectPath,
+  }) async {
+    MockExplorerDataStore.instance.ensureInitialized();
     MockExplorerDataStore.instance.removeById(fileId);
+  }
+
+  @override
+  Future<void> copyFile({
+    required String fileId,
+    required String currentName,
+    required String blockName,
+    required String dayOfWeek,
+    required ExplorerDuplicateStrategy duplicateStrategy,
+  }) async {
+    MockExplorerDataStore.instance.ensureInitialized();
+    final src = MockExplorerDataStore.instance.itemById(fileId);
+    if (src == null) return;
+    final now = DateTime.now();
+    final id = 'mock-copy-${now.millisecondsSinceEpoch}';
+    var name = src.name;
+    if (duplicateStrategy == ExplorerDuplicateStrategy.renameWithTimestamp) {
+      name = '${src.name}_copy_${now.millisecondsSinceEpoch}';
+    }
+    if (duplicateStrategy == ExplorerDuplicateStrategy.skip) {
+      final exists = MockExplorerDataStore.instance.snapshot().any((e) => !e.isDeleted && e.name == src.name);
+      if (exists) return;
+    }
+    if (duplicateStrategy == ExplorerDuplicateStrategy.replace) {
+      final toReplace = MockExplorerDataStore.instance.snapshot().where((e) => !e.isDeleted && e.name == src.name);
+      for (final e in toReplace) {
+        if (e.id != null) {
+          MockExplorerDataStore.instance.removeById(e.id!);
+        }
+      }
+    }
+    MockExplorerDataStore.instance.addItem(
+      src.copyWith(
+        id: id,
+        name: name,
+        path: _replaceLastPathSegment(src.path, name),
+        blockName: blockName,
+        dayOfWeek: dayOfWeek,
+        isDeleted: false,
+      ),
+    );
+  }
+
+  @override
+  Future<Uint8List> downloadFileBytes({
+    required String fileId,
+    required String storageBucket,
+    required String storageObjectPath,
+  }) async {
+    return Uint8List.fromList('Mock file content for $fileId'.codeUnits);
   }
 
   @override
