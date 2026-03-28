@@ -22,3 +22,7 @@ for all
 to anon, authenticated
 using (true)
 with check (true);
+
+-- Tables created after 003_phase_a_anon_access.sql do not get the earlier
+-- "grant on all tables" unless default privileges applied; grant explicitly.
+grant select, insert, update, delete on app.file_blobs to anon, authenticated;
