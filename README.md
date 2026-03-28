@@ -9,27 +9,116 @@ FileZen is a modern, cross-platform file management and organization application
 
 ## Getting Started
 
-To get the app up and running on your local machine, follow these steps:
-
 ### Prerequisites
-Make sure you have [Flutter](https://docs.flutter.dev/get-started/install) installed along with Android Studio or Xcode for emulator/simulator support.
-- **Flutter SDK**: `^3.x`
-- **Dart SDK**: `^3.x`
+Make sure you have [Flutter](https://docs.flutter.dev/get-started/install) installed.
+
+- **Flutter SDK**: `>=3.9.x`
+- **Dart SDK**: `^3.9.2`
 
 ### Installation
-1. **Clone the repository**:
+1. **Clone the repository**
    ```bash
    git clone <repository_url>
-   cd file_zen
+   cd FileZen
    ```
-2. **Install dependencies**:
+2. **Install dependencies**
    ```bash
    flutter pub get
    ```
-3. **Run the application**:
-   ```bash
-   flutter run
-   ```
+
+### Run in Mock Mode (no Supabase required)
+This is the fastest way to run the app locally.
+
+```bash
+flutter run
+```
+
+### Run with Supabase
+Pass runtime flags using `--dart-define`.
+
+```bash
+flutter run \
+  --dart-define=USE_SUPABASE_EXPLORER=true \
+  --dart-define=SUPABASE_URL=https://<your-project-ref>.supabase.co \
+  --dart-define=SUPABASE_ANON_KEY=<your-anon-key> \
+  --dart-define=FILEZEN_WORKSPACE_ID=<workspace-uuid> \
+  --dart-define=FILEZEN_DB_SCHEMA=app
+```
+
+Notes:
+- `SUPABASE_URL` and `SUPABASE_ANON_KEY` are required for Supabase initialization and storage upload fallback.
+- `FILEZEN_WORKSPACE_ID` is required for upload/create flows in Supabase mode.
+- `FILEZEN_DB_SCHEMA` defaults to `app` if not provided.
+
+### Team Setup (safe sharing)
+Do not commit real keys to this repository. Share values privately (password manager, vault, or secure chat).
+
+Required values for each team member:
+- `SUPABASE_URL` (Dashboard -> Settings -> API -> Project URL)
+- `SUPABASE_ANON_KEY` (Dashboard -> Settings -> API -> Project API keys -> `anon public`)
+- `FILEZEN_WORKSPACE_ID` (Table Editor -> `app.workspaces` -> `id`)
+- `FILEZEN_DB_SCHEMA` (`app` by default)
+
+Use placeholders in documentation and commands:
+
+```bash
+flutter run \
+  --dart-define=USE_SUPABASE_EXPLORER=true \
+  --dart-define=SUPABASE_URL=https://<project-ref>.supabase.co \
+  --dart-define=SUPABASE_ANON_KEY=<anon-key> \
+  --dart-define=FILEZEN_WORKSPACE_ID=<workspace-uuid> \
+  --dart-define=FILEZEN_DB_SCHEMA=app
+```
+
+Security note:
+- `anon` keys are designed for client apps, but still should not be hardcoded into public docs with real values.
+- Never expose `service_role` keys in app code or repository files.
+
+## Supabase Setup
+
+### 1) Create schema/tables
+Run the SQL in:
+- `docs/supabase_schema.sql`
+
+### 2) Add organizer columns migration
+Run:
+- `docs/migrations/002_organizer_block_day_columns.sql`
+
+### 3) Enable RLS and policies
+Run:
+- `docs/supabase_rls_policies.sql`
+
+The baseline policy file expects a `workspace_id` claim in the JWT for end-user sessions.
+
+## Faculty Demo Checklist (Operating Systems Project)
+
+Run the app with Supabase enabled, then verify:
+
+1. **Block-based + day-wise organization**
+   - Upload files from `Explorer` (floating upload button).
+   - Use file menu -> `Set block/day` to assign block and weekday.
+   - Confirm list groups files by block and weekday.
+2. **Database-backed reporting**
+   - Open `Reports`.
+   - Verify metrics are loaded from Supabase (`files` table).
+   - Click `Generate Report` and confirm a new row appears in `app.report_runs`.
+3. **Organizer automation proof**
+   - Open `Settings` (`/settings`) and click `Apply Protocols`.
+   - Confirm files are reclassified by extension and day and a completed `app.scan_jobs` row is created.
+4. **Android interface**
+   - Run on Android and repeat steps 1-3.
+
+## Quality Checks
+
+Run before pushing changes:
+
+```bash
+flutter analyze
+flutter test
+```
+
+CI is configured in:
+- `.github/workflows/flutter_ci.yml`
 
 ## Project Structure
 FileZen utilizes a clean architectural structure broken down by **features**:

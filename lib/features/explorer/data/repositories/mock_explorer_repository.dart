@@ -37,6 +37,9 @@ class MockExplorerRepository implements ExplorerRepository {
     final dayFilter = query.organizerDayOfWeek?.trim();
 
     final filtered = items.where((item) {
+      if (item.isDeleted != query.includeDeleted) {
+        return false;
+      }
       if (query.kind == ExplorerKindFilter.folders && !item.isFolder) {
         return false;
       }

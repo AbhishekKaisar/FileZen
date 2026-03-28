@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
 
 class StorageMetricsCards extends StatelessWidget {
-  const StorageMetricsCards({super.key});
+  const StorageMetricsCards({
+    super.key,
+    required this.totalBytes,
+    required this.totalFiles,
+    required this.integrityScore,
+  });
+
+  final int totalBytes;
+  final int totalFiles;
+  final double integrityScore;
 
   @override
   Widget build(BuildContext context) {
@@ -23,12 +32,26 @@ class StorageMetricsCards extends StatelessWidget {
                   flex: 1,
                   child: Column(
                     children: [
-                      Expanded(child: _buildInfoCard(Icons.folder_zip, const Color(0xFF8FA0AA), '142,803', 'Total Objects Indexed')),
+                      Expanded(
+                        child: _buildInfoCard(
+                          Icons.folder_zip,
+                          const Color(0xFF8FA0AA),
+                          '$totalFiles',
+                          'Total Objects Indexed',
+                        ),
+                      ),
                       const SizedBox(height: 16),
-                      Expanded(child: _buildInfoCard(Icons.verified_user, const Color(0xFFE4DFFF), '99.9%', 'Integrity Score')),
+                      Expanded(
+                        child: _buildInfoCard(
+                          Icons.verified_user,
+                          const Color(0xFFE4DFFF),
+                          '${integrityScore.toStringAsFixed(1)}%',
+                          'Integrity Score',
+                        ),
+                      ),
                     ],
                   ),
-                )
+                ),
               ],
             ),
           );
@@ -39,9 +62,23 @@ class StorageMetricsCards extends StatelessWidget {
               const SizedBox(height: 16),
               Row(
                 children: [
-                  Expanded(child: _buildInfoCard(Icons.folder_zip, const Color(0xFF8FA0AA), '142,803', 'Total Objects Indexed')),
+                  Expanded(
+                      child: _buildInfoCard(
+                        Icons.folder_zip,
+                        const Color(0xFF8FA0AA),
+                        '$totalFiles',
+                        'Total Objects Indexed',
+                      ),
+                    ),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildInfoCard(Icons.verified_user, const Color(0xFFE4DFFF), '99.9%', 'Integrity Score')),
+                  Expanded(
+                      child: _buildInfoCard(
+                        Icons.verified_user,
+                        const Color(0xFFE4DFFF),
+                        '${integrityScore.toStringAsFixed(1)}%',
+                        'Integrity Score',
+                      ),
+                    ),
                 ],
               )
             ],
@@ -52,6 +89,11 @@ class StorageMetricsCards extends StatelessWidget {
   }
 
   Widget _buildLiveStatusCard() {
+    final usedRatio = totalFiles <= 0 ? 0.0 : (integrityScore / 100).clamp(0.05, 1.0);
+    final storageLabel = _formatBytes(totalBytes);
+    final split = storageLabel.split(' ');
+    final amount = split.isEmpty ? '0' : split.first;
+    final unit = split.length > 1 ? split.last : 'B';
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
@@ -94,10 +136,10 @@ class StorageMetricsCards extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.baseline,
                 textBaseline: TextBaseline.alphabetic,
-                children: const [
-                  Text('2.4', style: TextStyle(fontFamily: 'Manrope', fontSize: 48, fontWeight: FontWeight.w300, color: Colors.white)),
-                  SizedBox(width: 8),
-                  Text('TB', style: TextStyle(fontFamily: 'Manrope', fontSize: 24, color: Colors.white)),
+                children: [
+                  Text(amount, style: const TextStyle(fontFamily: 'Manrope', fontSize: 48, fontWeight: FontWeight.w300, color: Colors.white)),
+                  const SizedBox(width: 8),
+                  Text(unit, style: const TextStyle(fontFamily: 'Manrope', fontSize: 24, color: Colors.white)),
                 ],
               ),
               const SizedBox(height: 8),
@@ -112,7 +154,7 @@ class StorageMetricsCards extends StatelessWidget {
                 ),
                 child: FractionallySizedBox(
                   alignment: Alignment.centerLeft,
-                  widthFactor: 0.65,
+                  widthFactor: usedRatio,
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
@@ -170,5 +212,18 @@ class StorageMetricsCards extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var value = bytes.toDouble();
+    var unitIndex = 0;
+    while (value >= 1024 && unitIndex < units.length - 1) {
+      value /= 1024;
+      unitIndex += 1;
+    }
+    final display = value >= 10 || unitIndex == 0 ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
+    return '$display ${units[unitIndex]}';
   }
 }
