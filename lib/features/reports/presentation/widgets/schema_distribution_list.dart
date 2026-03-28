@@ -84,13 +84,75 @@ class SchemaDistributionList extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: const Color(0xFF484848).withValues(alpha: 0.1))),
       ),
-      child: const Row(
+      child: Row(
+        // On web, this header row can end up under unbounded width constraints.
+        // Shrink-wrap horizontally to avoid a flex layout fighting infinite width.
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(flex: 3, child: Text('SCHEMA NAME', style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.5, color: Color(0xFFACABAA)))),
-          Expanded(flex: 2, child: Text('TYPE', style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.5, color: Color(0xFFACABAA)))),
-          Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('RECORDS', style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.5, color: Color(0xFFACABAA))))),
-          Expanded(flex: 1, child: Align(alignment: Alignment.centerRight, child: Text('GROWTH', style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.5, color: Color(0xFFACABAA))))),
-          Expanded(flex: 1, child: Padding(padding: EdgeInsets.only(left: 32.0), child: Text('STATUS', style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.5, color: Color(0xFFACABAA))))),
+          Flexible(
+            flex: 3,
+            fit: FlexFit.loose,
+            child: Text('SCHEMA NAME',
+                style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.5,
+                    color: Color(0xFFACABAA))),
+          ),
+          Flexible(
+            flex: 2,
+            fit: FlexFit.loose,
+            child: Text('TYPE',
+                style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.5,
+                    color: Color(0xFFACABAA))),
+          ),
+          Flexible(
+            flex: 1,
+            fit: FlexFit.loose,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Text('RECORDS',
+                  style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.5,
+                      color: Color(0xFFACABAA))),
+            ),
+          ),
+          Flexible(
+            flex: 1,
+            fit: FlexFit.loose,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Text('GROWTH',
+                  style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.5,
+                      color: Color(0xFFACABAA))),
+            ),
+          ),
+          Flexible(
+            flex: 1,
+            fit: FlexFit.loose,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 32.0),
+              child: Text('STATUS',
+                  style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.5,
+                      color: Color(0xFFACABAA))),
+            ),
+          ),
         ],
       ),
     );
@@ -108,7 +170,7 @@ class SchemaDistributionList extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(
+          Flexible(
             flex: 3,
             child: Row(
               children: [
@@ -118,25 +180,25 @@ class SchemaDistributionList extends StatelessWidget {
               ],
             ),
           ),
-          Expanded(
+          Flexible(
             flex: 2,
             child: Text(type, style: const TextStyle(fontFamily: 'Inter', fontSize: 14, color: Color(0xFFACABAA))),
           ),
-          Expanded(
+          Flexible(
             flex: 1,
             child: Align(
               alignment: Alignment.centerRight,
               child: Text(records, style: const TextStyle(fontFamily: 'monospace', fontSize: 14, color: Colors.white)),
             ),
           ),
-          Expanded(
+          Flexible(
             flex: 1,
             child: Align(
               alignment: Alignment.centerRight,
               child: Text(growth, style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: growthColor)),
             ),
           ),
-          Expanded(
+          Flexible(
             flex: 1,
             child: Padding(
               padding: const EdgeInsets.only(left: 32.0),

@@ -52,7 +52,7 @@ class SupabaseExplorerRepository implements ExplorerRepository {
   }
 
   Future<List<Map<String, dynamic>>> _queryFiles(ExplorerQuery query) async {
-    dynamic request = _client.from('files').select(
+    dynamic request = _client.schema('app').from('files').select(
           'id,name,size_bytes,updated_at,metadata,organizer_block_label,organizer_day_of_week,folders(name)',
         );
 
@@ -61,6 +61,16 @@ class SupabaseExplorerRepository implements ExplorerRepository {
     }
     if (query.search.trim().isNotEmpty) {
       request = request.ilike('name', '%${query.search.trim()}%');
+    }
+
+    final block = query.organizerBlockLabel?.trim();
+    if (block != null && block.isNotEmpty) {
+      request = request.eq('organizer_block_label', block);
+    }
+
+    final day = query.organizerDayOfWeek?.trim();
+    if (day != null && day.isNotEmpty) {
+      request = request.eq('organizer_day_of_week', day);
     }
 
     request = request.eq('is_deleted', false);

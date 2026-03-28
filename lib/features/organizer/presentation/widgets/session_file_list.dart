@@ -1,53 +1,70 @@
 import 'package:flutter/material.dart';
+
+import '../../../explorer/domain/models/explorer_item.dart';
 import '../screens/metadata_visualizer_bottom_sheet.dart';
 
+/// Files for the selected organizer block + day (backed by Explorer / Supabase).
 class SessionFileList extends StatelessWidget {
-  const SessionFileList({super.key});
+  const SessionFileList({
+    super.key,
+    required this.items,
+    this.isLoading = false,
+    this.blockLabel,
+    this.dayLabel,
+  });
+
+  final List<ExplorerItem> items;
+  final bool isLoading;
+  final String? blockLabel;
+  final String? dayLabel;
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 32),
+        child: Center(
+          child: CircularProgressIndicator(color: Color(0xFFAEC6FF)),
+        ),
+      );
+    }
+
+    if (items.isEmpty) {
+      final dayPart =
+          (dayLabel != null && dayLabel!.isNotEmpty) ? 'Day: $dayLabel' : 'All days';
+      final scope = [
+        if (blockLabel != null && blockLabel!.isNotEmpty) 'Block: $blockLabel',
+        dayPart,
+      ].join(' · ');
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: const Color(0xFF131313),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF484848).withValues(alpha: 0.15)),
+          ),
+          child: Text(
+            'No files for this view.\n$scope\nUpload files from Explorer or change block/day.',
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              height: 1.5,
+              color: Color(0xFFACABAA),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSessionHeader('Morning Session — 09:00'),
+        _buildSessionHeader('Files in this view'),
         const SizedBox(height: 8),
-        _buildFileItem(
-          context: context,
-          icon: Icons.description,
-          iconColor: const Color(0xFFAEC6FF),
-          title: 'Campaign_Brief_V2.pdf',
-          subtitle: 'Last modified 2h ago • 4.2 MB',
-          badgeText: 'Review',
-          badgeColor: const Color(0xFF2E3E45),
-          badgeTextColor: const Color(0xFFB1C2CB),
-          extraInfo: 'Shared with 3 people',
-        ),
-        const SizedBox(height: 8),
-        _buildFileItem(
-          context: context,
-          icon: Icons.image,
-          iconColor: const Color(0xFFE4DFFF),
-          title: 'Hero_Visual_Concept.png',
-          subtitle: 'Last modified 4h ago • 12.8 MB',
-          badgeText: 'Asset',
-          badgeColor: const Color(0xFF1F2020),
-          badgeTextColor: const Color(0xFFACABAA),
-          extraInfo: 'Private',
-        ),
-        const SizedBox(height: 32),
-        _buildSessionHeader('Afternoon Session — 14:30'),
-        const SizedBox(height: 8),
-        _buildFileItem(
-          context: context,
-          icon: Icons.table_chart,
-          iconColor: const Color(0xFFAEC6FF),
-          title: 'Budget_Projections_Final.xlsx',
-          subtitle: 'Last modified 15m ago • 1.1 MB',
-          badgeText: 'Priority',
-          badgeColor: const Color(0xFF7F2927),
-          badgeTextColor: const Color(0xFFFF9993),
-          extraInfo: 'Auto-sync enabled',
-        ),
+        ...items.map((item) => _buildFileItem(context: context, item: item)),
       ],
     );
   }
@@ -70,97 +87,85 @@ class SessionFileList extends StatelessWidget {
 
   Widget _buildFileItem({
     required BuildContext context,
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required String badgeText,
-    required Color badgeColor,
-    required Color badgeTextColor,
-    required String extraInfo,
+    required ExplorerItem item,
   }) {
-    return InkWell(
-      onTap: () {
-        showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (context) => const MetadataVisualizerBottomSheet(),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF131313),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.transparent),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: const Color(0xFF191A1A),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: iconColor),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        onTap: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => const MetadataVisualizerBottomSheet(),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF131313),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF484848).withValues(alpha: 0.12)),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF191A1A),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  item.isFolder ? Icons.folder : Icons.insert_drive_file,
+                  color: item.isFolder ? const Color(0xFFAEC6FF) : const Color(0xFFACABAA),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.name,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${item.updatedLabel} · ${item.sizeLabel}\n${item.dayOfWeek} · ${item.blockName}',
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 11,
+                        height: 1.35,
+                        color: Color(0xFFACABAA),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2E3E45),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  item.dayOfWeek,
                   style: const TextStyle(
                     fontFamily: 'Inter',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFFB1C2CB),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 11,
-                    color: Color(0xFFACABAA),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (extraInfo.isNotEmpty) ...[
-            Text(
-              extraInfo,
-              style: const TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 11,
-                color: Color(0xFF767575), // outline / 60
               ),
-            ),
-            const SizedBox(width: 24),
-          ],
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: badgeColor,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Text(
-              badgeText,
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 10,
-                color: badgeTextColor,
-              ),
-            ),
+            ],
           ),
-          const SizedBox(width: 16),
-            const Icon(Icons.more_vert, color: Color(0xFFACABAA)),
-          ],
         ),
       ),
     );

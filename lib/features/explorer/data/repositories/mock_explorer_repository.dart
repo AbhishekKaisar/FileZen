@@ -33,12 +33,25 @@ class MockExplorerRepository implements ExplorerRepository {
     final items = MockExplorerDataStore.instance.snapshot();
 
     final search = query.search.trim().toLowerCase();
+    final blockFilter = query.organizerBlockLabel?.trim();
+    final dayFilter = query.organizerDayOfWeek?.trim();
+
     final filtered = items.where((item) {
       if (query.kind == ExplorerKindFilter.folders && !item.isFolder) {
         return false;
       }
       if (query.kind == ExplorerKindFilter.files && item.isFolder) {
         return false;
+      }
+      if (blockFilter != null && blockFilter.isNotEmpty) {
+        if (item.blockName.trim().toLowerCase() != blockFilter.toLowerCase()) {
+          return false;
+        }
+      }
+      if (dayFilter != null && dayFilter.isNotEmpty) {
+        if (_canonicalWeekday(item.dayOfWeek) != _canonicalWeekday(dayFilter)) {
+          return false;
+        }
       }
       if (search.isEmpty) {
         return true;
@@ -58,5 +71,26 @@ class MockExplorerRepository implements ExplorerRepository {
     });
 
     return filtered;
+  }
+
+  static String _canonicalWeekday(String raw) {
+    switch (raw.trim().toLowerCase()) {
+      case 'monday':
+        return 'Monday';
+      case 'tuesday':
+        return 'Tuesday';
+      case 'wednesday':
+        return 'Wednesday';
+      case 'thursday':
+        return 'Thursday';
+      case 'friday':
+        return 'Friday';
+      case 'saturday':
+        return 'Saturday';
+      case 'sunday':
+        return 'Sunday';
+      default:
+        return raw.trim();
+    }
   }
 }
