@@ -8,10 +8,12 @@ class SupabaseExplorerRepository implements ExplorerRepository {
   SupabaseExplorerRepository({
     required SupabaseClient client,
     this.workspaceId,
+    this.dbSchema = 'app',
   }) : _client = client;
 
   final SupabaseClient _client;
   final String? workspaceId;
+  final String dbSchema;
 
   @override
   Future<List<ExplorerItem>> fetchItems(ExplorerQuery query) async {
@@ -37,10 +39,13 @@ class SupabaseExplorerRepository implements ExplorerRepository {
         name: fileName,
         path: displayPath,
         isFolder: false,
+        isDeleted: row['is_deleted'] as bool? ?? false,
         sizeLabel: _formatBytes(size),
         updatedLabel: _formatUpdatedLabel(updatedAt),
         blockName: blockName,
         dayOfWeek: dayOfWeek,
+        storageBucket: row['storage_bucket'] as String?,
+        storageObjectPath: row['storage_object_path'] as String?,
       );
     }).toList();
 
@@ -52,8 +57,8 @@ class SupabaseExplorerRepository implements ExplorerRepository {
   }
 
   Future<List<Map<String, dynamic>>> _queryFiles(ExplorerQuery query) async {
-    dynamic request = _client.schema('app').from('files').select(
-          'id,name,size_bytes,updated_at,metadata,organizer_block_label,organizer_day_of_week,folders(name)',
+    dynamic request = _client.schema(dbSchema).from('files').select(
+          'id,name,size_bytes,updated_at,metadata,organizer_block_label,organizer_day_of_week,is_deleted,storage_bucket,storage_object_path,folders(name)',
         );
 
     if (workspaceId != null && workspaceId!.isNotEmpty) {
@@ -73,7 +78,7 @@ class SupabaseExplorerRepository implements ExplorerRepository {
       request = request.eq('organizer_day_of_week', day);
     }
 
-    request = request.eq('is_deleted', false);
+    request = request.eq('is_deleted', query.includeDeleted);
 
     switch (query.sortBy) {
       case ExplorerSortBy.nameAsc:
@@ -99,6 +104,9 @@ class SupabaseExplorerRepository implements ExplorerRepository {
         'metadata': map['metadata'],
         'organizer_block_label': map['organizer_block_label'],
         'organizer_day_of_week': map['organizer_day_of_week'],
+        'is_deleted': map['is_deleted'],
+        'storage_bucket': map['storage_bucket'],
+        'storage_object_path': map['storage_object_path'],
         'folder_name': folders is Map<String, dynamic> ? folders['name'] : null,
       };
     }).toList();

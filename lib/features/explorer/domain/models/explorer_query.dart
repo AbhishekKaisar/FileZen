@@ -17,6 +17,7 @@ class ExplorerQuery {
     this.sortBy = ExplorerSortBy.nameAsc,
     this.organizerBlockLabel,
     this.organizerDayOfWeek,
+    this.includeDeleted = false,
   });
 
   final String search;
@@ -28,4 +29,7 @@ class ExplorerQuery {
 
   /// When set, only files on this weekday (`app.files.organizer_day_of_week`), e.g. `Friday`.
   final String? organizerDayOfWeek;
+
+  /// When false, only non-deleted files; when true, only deleted (trash) rows.
+  final bool includeDeleted;
 }

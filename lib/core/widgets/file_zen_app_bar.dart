@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class FileZenAppBar extends StatelessWidget implements PreferredSizeWidget {
   const FileZenAppBar({super.key});
@@ -26,6 +27,14 @@ class FileZenAppBar extends StatelessWidget implements PreferredSizeWidget {
           child: IconButton(
             icon: const Icon(Icons.search, color: Color(0xFFACABAA)),
             onPressed: () {},
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(right: 8.0),
+          child: IconButton(
+            icon: const Icon(Icons.settings, color: Color(0xFFACABAA)),
+            tooltip: 'Settings',
+            onPressed: () => context.push('/settings'),
           ),
         ),
         Padding(
