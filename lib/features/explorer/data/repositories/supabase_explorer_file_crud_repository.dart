@@ -21,12 +21,12 @@ class SupabaseExplorerFileCrudRepository implements ExplorerFileCrudRepository {
   Future<void> renameFile({required String fileId, required String newName}) async {
     final trimmed = newName.trim();
     if (trimmed.isEmpty) return;
-    await _client.from('files').update({'name': trimmed}).eq('id', fileId);
+    await _client.schema('app').from('files').update({'name': trimmed}).eq('id', fileId);
   }
 
   @override
   Future<void> softDeleteFile({required String fileId}) async {
-    await _client.from('files').update({
+    await _client.schema('app').from('files').update({
       'is_deleted': true,
       'deleted_at': DateTime.now().toUtc().toIso8601String(),
     }).eq('id', fileId);
@@ -62,6 +62,7 @@ class SupabaseExplorerFileCrudRepository implements ExplorerFileCrudRepository {
           ),
         );
 
+    const blockLabel = 'Primary Archive';
     final insertPayload = <String, dynamic>{
       'id': rowId,
       'workspace_id': workspaceId,
@@ -71,8 +72,10 @@ class SupabaseExplorerFileCrudRepository implements ExplorerFileCrudRepository {
       'storage_bucket': storageBucket,
       'storage_object_path': objectPath,
       'storage_provider': 'supabase',
+      'organizer_block_label': blockLabel,
+      'organizer_day_of_week': dayLabel,
       'metadata': <String, dynamic>{
-        'block': 'Primary Archive',
+        'block': blockLabel,
         'day_of_week': dayLabel,
       },
     };
@@ -83,7 +86,7 @@ class SupabaseExplorerFileCrudRepository implements ExplorerFileCrudRepository {
       insertPayload['mime_type'] = contentType;
     }
 
-    await _client.from('files').insert(insertPayload);
+    await _client.schema('app').from('files').insert(insertPayload);
   }
 
   static String? _fileExtension(String name) {
