@@ -12,6 +12,7 @@ Create a project at [supabase.com](https://supabase.com) and open **SQL Editor**
 2. Run **`docs/migrations/002_organizer_block_day_columns.sql`**.
 3. Run **`docs/migrations/003_phase_a_anon_access.sql`** (grants + permissive RLS for `anon` — **dev only**).
 4. Run **`docs/migrations/004_seed_phase_a_workspace.sql`**.
+5. Run **`docs/migrations/006_file_blob_fallback.sql`** (creates `app.file_blobs` used on upload / download fallback). If you skip this, uploads can fail with `PGRST205` / table not in schema cache.
 
 The seeded workspace id (used by the app) is:
 
