@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../widgets/organizer_live_section.dart';
 import '../widgets/project_blocks_grid.dart';
 import '../widgets/timeline_view_header.dart';
@@ -30,7 +31,8 @@ class BlockOrganizerScreen extends StatelessWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () => context.go('/explorer'),
+        tooltip: 'Upload files',
         backgroundColor: const Color(0xFFAEC6FF),
         child: const Icon(Icons.add, color: Color(0xFF003D8A), size: 30),
       ),
