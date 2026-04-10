@@ -87,16 +87,16 @@ class FileMetadataPipeline {
 
   static String organizerDayFor(DateTime whenLocal) => ExplorerWeekday.english(whenLocal);
 
-  // Free, dependency-free checksum (FNV-1a 64-bit) for integrity demos.
+  // Free, dependency-free checksum (FNV-1a 32-bit) for integrity demos.
+  // Uses 32-bit variant to stay JS-safe on Flutter web.
   static String checksumFnv1a64(Uint8List bytes) {
-    const int offset = 0xcbf29ce484222325;
-    const int prime = 0x100000001b3;
-    var hash = offset;
+    var hash = 0x811c9dc5;
+    const int prime = 0x01000193;
     for (final b in bytes) {
       hash ^= b;
-      hash = (hash * prime) & 0xFFFFFFFFFFFFFFFF;
+      hash = (hash * prime) & 0xFFFFFFFF;
     }
-    return hash.toRadixString(16).padLeft(16, '0');
+    return hash.toRadixString(16).padLeft(8, '0');
   }
 
   static String? maybeExtractTextSnippet({

@@ -1,11 +1,83 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:math';
 
-class StorageOverviewWidget extends StatelessWidget {
+import '../../../explorer/data/explorer_byte_format.dart';
+
+/// Queries Supabase for real storage totals, or shows zero-state when unavailable.
+class StorageOverviewWidget extends StatefulWidget {
   const StorageOverviewWidget({super.key});
 
   @override
+  State<StorageOverviewWidget> createState() => _StorageOverviewWidgetState();
+}
+
+class _StorageOverviewWidgetState extends State<StorageOverviewWidget> {
+  int _usedBytes = 0;
+  int _totalFiles = 0;
+  bool _loading = true;
+
+  // Workspace capacity (configurable upper bound for the ring chart).
+  static const int _capacityBytes = 2 * 1024 * 1024 * 1024; // 2 GB default
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStorageStats();
+  }
+
+  Future<void> _loadStorageStats() async {
+    const useSupabase = bool.fromEnvironment('USE_SUPABASE_EXPLORER', defaultValue: false);
+    const workspaceId = String.fromEnvironment('FILEZEN_WORKSPACE_ID', defaultValue: '');
+    const dbSchema = String.fromEnvironment('FILEZEN_DB_SCHEMA', defaultValue: 'app');
+
+    if (!useSupabase || workspaceId.isEmpty) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+
+    try {
+      final client = Supabase.instance.client;
+      final rows = await client
+          .schema(dbSchema)
+          .from('files')
+          .select('size_bytes')
+          .eq('workspace_id', workspaceId)
+          .eq('is_deleted', false);
+
+      int total = 0;
+      for (final row in rows) {
+        total += ((row['size_bytes'] as num?) ?? 0).toInt();
+      }
+      if (!mounted) return;
+      setState(() {
+        _usedBytes = total;
+        _totalFiles = rows.length;
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const SizedBox(
+        height: 250,
+        child: Center(child: CircularProgressIndicator(color: Color(0xFFAEC6FF))),
+      );
+    }
+
+    final percentage = _capacityBytes > 0
+        ? ((_usedBytes / _capacityBytes) * 100).clamp(0, 100).toDouble()
+        : 0.0;
+    final freeBytes = (_capacityBytes - _usedBytes).clamp(0, _capacityBytes);
+    final usedLabel = ExplorerByteFormat.humanReadable(_usedBytes);
+    final freeLabel = ExplorerByteFormat.humanReadable(freeBytes);
+    final totalLabel = ExplorerByteFormat.humanReadable(_capacityBytes);
+    final percentText = '${percentage.toStringAsFixed(0)}%';
+
     return Wrap(
       alignment: WrapAlignment.center,
       crossAxisAlignment: WrapCrossAlignment.center,
@@ -22,24 +94,24 @@ class StorageOverviewWidget extends StatelessWidget {
               CustomPaint(
                 size: const Size(200, 200),
                 painter: _RingChartPainter(
-                  percentage: 72,
-                  backgroundColor: const Color(0xFF2E3E45), // secondary-container equivalent
-                  gradientColors: const [Color(0xFFAEC6FF), Color(0xFF0C4492)], // primary to primary-container
+                  percentage: percentage,
+                  backgroundColor: const Color(0xFF2E3E45),
+                  gradientColors: const [Color(0xFFAEC6FF), Color(0xFF0C4492)],
                 ),
               ),
-              const Column(
+              Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '72%',
-                    style: TextStyle(
+                    percentText,
+                    style: const TextStyle(
                       fontFamily: 'Manrope',
                       fontSize: 64,
                       fontWeight: FontWeight.w200,
                       color: Color(0xFFAEC6FF),
                     ),
                   ),
-                  Text(
+                  const Text(
                     'CAPACITY USED',
                     style: TextStyle(
                       fontFamily: 'Inter',
@@ -69,9 +141,9 @@ class StorageOverviewWidget extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Your digital assets are securely indexed. Currently managing 1.4 TB of 2.0 TB total capacity.',
-                style: TextStyle(
+              Text(
+                '$_totalFiles files indexed. Currently managing $usedLabel of $totalLabel workspace capacity.',
+                style: const TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 16,
                   color: Color(0xFFACABAA),
@@ -81,9 +153,9 @@ class StorageOverviewWidget extends StatelessWidget {
               const SizedBox(height: 24),
               Row(
                 children: [
-                  _buildStatCard('USED SPACE', '1,432 GB', Colors.white),
+                  _buildStatCard('USED SPACE', usedLabel, Colors.white),
                   const SizedBox(width: 16),
-                  _buildStatCard('FREE SPACE', '568 GB', const Color(0xFFAEC6FF)),
+                  _buildStatCard('FREE SPACE', freeLabel, const Color(0xFFAEC6FF)),
                 ],
               )
             ],
@@ -98,7 +170,7 @@ class StorageOverviewWidget extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: const Color(0xFF131313), // surface-container-low
+          color: const Color(0xFF131313),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
