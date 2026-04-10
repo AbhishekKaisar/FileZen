@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
 
 class ReportsHeaderWidget extends StatelessWidget {
-  const ReportsHeaderWidget({super.key});
+  const ReportsHeaderWidget({
+    super.key,
+    required this.onGenerate,
+    required this.generating,
+    this.lastGeneratedAt,
+  });
+
+  final VoidCallback onGenerate;
+  final bool generating;
+  final DateTime? lastGeneratedAt;
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +58,10 @@ class ReportsHeaderWidget extends StatelessWidget {
                   ),
                 ),
                 if (!isWide) const SizedBox(height: 24),
-                Container(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Container(
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xFFAEC6FF), Color(0xFF0C4492)], // primary to primary-container
@@ -66,30 +78,51 @@ class ReportsHeaderWidget extends StatelessWidget {
                     ],
                   ),
                   child: ElevatedButton(
-                    onPressed: () {},
+                    onPressed: generating ? null : onGenerate,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.transparent,
                       shadowColor: Colors.transparent,
                       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.auto_awesome, color: Color(0xFF003D8A), size: 24), // on-primary
-                        SizedBox(width: 12),
+                        if (generating) ...[
+                          const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              color: Color(0xFF003D8A),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                        ] else ...[
+                          const Icon(Icons.auto_awesome, color: Color(0xFF003D8A), size: 24),
+                          const SizedBox(width: 12),
+                        ],
                         Text(
-                          'Generate Report',
-                          style: TextStyle(
+                          generating ? 'Generating...' : 'Generate Report',
+                          style: const TextStyle(
                             fontFamily: 'Manrope',
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF003D8A), // on-primary
+                            color: Color(0xFF003D8A),
                           ),
                         ),
                       ],
                     ),
                   ),
+                ),
+                    if (lastGeneratedAt != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Last run: ${lastGeneratedAt!.toLocal()}',
+                        style: const TextStyle(fontSize: 12, color: Color(0xFFACABAA)),
+                      ),
+                    ],
+                  ],
                 )
               ],
             );

@@ -7,6 +7,9 @@ void main() {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const FileZenApp());
 
+    // Let async timers (mock repository delays) complete.
+    await tester.pumpAndSettle();
+
     // Verify that the app launches successfully.
     expect(find.byType(FileZenApp), findsOneWidget);
   });
