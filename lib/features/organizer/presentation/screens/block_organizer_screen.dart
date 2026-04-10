@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../widgets/organizer_live_section.dart';
 import '../widgets/project_blocks_grid.dart';
 import '../widgets/timeline_view_header.dart';
-import '../widgets/day_tabs_selector.dart';
-import '../widgets/session_file_list.dart';
 
 class BlockOrganizerScreen extends StatelessWidget {
   const BlockOrganizerScreen({super.key});
@@ -23,9 +23,7 @@ class BlockOrganizerScreen extends StatelessWidget {
                 SizedBox(height: 64),
                 TimelineViewHeader(),
                 SizedBox(height: 32),
-                DayTabsSelector(),
-                SizedBox(height: 24),
-                SessionFileList(),
+                OrganizerLiveSection(),
                 SizedBox(height: 128),
               ],
             ),
@@ -33,7 +31,8 @@ class BlockOrganizerScreen extends StatelessWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () => context.go('/explorer'),
+        tooltip: 'Upload files',
         backgroundColor: const Color(0xFFAEC6FF),
         child: const Icon(Icons.add, color: Color(0xFF003D8A), size: 30),
       ),

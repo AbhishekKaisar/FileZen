@@ -1,13 +1,66 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../data/organizer_run_now_service.dart';
 import '../widgets/extension_protocols_card.dart';
 import '../widgets/temporal_logic_picker.dart';
 import '../widgets/conflict_resolution_settings.dart';
 
 import 'package:go_router/go_router.dart';
 
-class OrganizerSettingsScreen extends StatelessWidget {
+class OrganizerSettingsScreen extends StatefulWidget {
   const OrganizerSettingsScreen({super.key});
+
+  @override
+  State<OrganizerSettingsScreen> createState() => _OrganizerSettingsScreenState();
+}
+
+class _OrganizerSettingsScreenState extends State<OrganizerSettingsScreen> {
+  bool _running = false;
+
+  Future<void> _runOrganizerNow() async {
+    if (_running) return;
+    const useSupabase = bool.fromEnvironment('USE_SUPABASE_EXPLORER', defaultValue: false);
+    const workspaceId = String.fromEnvironment('FILEZEN_WORKSPACE_ID', defaultValue: '');
+    const dbSchema = String.fromEnvironment('FILEZEN_DB_SCHEMA', defaultValue: 'app');
+    if (!useSupabase || workspaceId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Run in Supabase mode with FILEZEN_WORKSPACE_ID to apply protocols.'),
+          backgroundColor: Color(0xFF7F2927),
+        ),
+      );
+      return;
+    }
+    setState(() => _running = true);
+    try {
+      final service = OrganizerRunNowService(
+        client: Supabase.instance.client,
+        workspaceId: workspaceId,
+        dbSchema: dbSchema,
+      );
+      final result = await service.runNow();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Protocols applied to ${result.updatedCount} files. Job: ${result.jobId.substring(0, 8)}...'),
+          backgroundColor: const Color(0xFF2E3E45),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Organizer run failed: $e'),
+          backgroundColor: const Color(0xFF7F2927),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _running = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +142,7 @@ class OrganizerSettingsScreen extends StatelessWidget {
                     ),
                     const SizedBox(width: 16),
                     ElevatedButton(
-                      onPressed: () {},
+                      onPressed: _running ? null : _runOrganizerNow,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFAEC6FF), // primary
                         foregroundColor: const Color(0xFF003D8A), // on-primary
@@ -100,7 +153,10 @@ class OrganizerSettingsScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(24),
                         ),
                       ),
-                      child: const Text('Apply Protocols', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: Text(
+                        _running ? 'Applying...' : 'Apply Protocols',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ),

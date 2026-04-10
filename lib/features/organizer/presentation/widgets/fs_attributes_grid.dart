@@ -66,7 +66,7 @@ class FsAttributesGrid extends StatelessWidget {
                 ),
               ),
               Text(
-                '284,556,122',
+                inodeNumber.toString(),
                 style: const TextStyle(
                   fontFamily: 'monospace',
                   fontSize: 12,
