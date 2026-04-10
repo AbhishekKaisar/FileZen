@@ -130,7 +130,7 @@ class OrganizerRunNowService {
       case DateTime.sunday:
         return 'Sunday';
       default:
-        return 'Unscheduled';
+        return 'Monday'; // DateTime.weekday is always 1–7; fallback should not occur
     }
   }
 }

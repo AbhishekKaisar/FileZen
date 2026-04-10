@@ -36,13 +36,15 @@ class SupabaseExplorerFileCrudRepository implements ExplorerFileCrudRepository {
     required String dayOfWeek,
   }) async {
     final block = blockName.trim().isEmpty ? 'Unassigned Block' : blockName.trim();
-    final day = dayOfWeek.trim().isEmpty ? 'Unscheduled' : dayOfWeek.trim();
+    final rawDay = dayOfWeek.trim();
+    // DB constraint only allows NULL or Monday–Sunday; map "Unscheduled"/empty to NULL.
+    final day = (rawDay.isEmpty || rawDay == 'Unscheduled') ? null : rawDay;
     await _client.schema(dbSchema).from('files').update({
       'organizer_block_label': block,
       'organizer_day_of_week': day,
       'metadata': {
         'block': block,
-        'day_of_week': day,
+        'day_of_week': day ?? 'Unscheduled',
       },
     }).eq('id', fileId);
   }
