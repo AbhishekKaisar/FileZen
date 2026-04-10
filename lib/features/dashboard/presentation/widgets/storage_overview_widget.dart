@@ -225,6 +225,8 @@ class _RingChartPainter extends CustomPainter {
     canvas.drawCircle(center, radius, bgPaint);
 
     final sweepAngle = 2 * pi * (percentage / 100);
+    if (sweepAngle <= 0) return; // nothing to draw at 0%
+
     final gradientPaint = Paint()
       ..shader = SweepGradient(
         colors: gradientColors,
