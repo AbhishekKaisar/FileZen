@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:printing/printing.dart';
 import '../../data/repositories/explorer_repository_factory.dart';
 import '../../domain/models/explorer_item.dart';
 import '../../domain/models/explorer_query.dart';
@@ -889,7 +890,7 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
   }
 }
 
-class _FilePreviewDialog extends StatelessWidget {
+class _FilePreviewDialog extends StatefulWidget {
   const _FilePreviewDialog({
     required this.fileName,
     required this.bytes,
@@ -898,16 +899,61 @@ class _FilePreviewDialog extends StatelessWidget {
   final String fileName;
   final List<int> bytes;
 
+  static String _ext(String fileName) {
+    final dot = fileName.lastIndexOf('.');
+    if (dot <= 0 || dot == fileName.length - 1) return '';
+    return fileName.substring(dot + 1).toLowerCase();
+  }
+
+  @override
+  State<_FilePreviewDialog> createState() => _FilePreviewDialogState();
+}
+
+class _FilePreviewDialogState extends State<_FilePreviewDialog> {
+  List<Uint8List>? _pdfPages;
+  bool _pdfLoading = false;
+  String? _pdfError;
+
+  @override
+  void initState() {
+    super.initState();
+    final ext = _FilePreviewDialog._ext(widget.fileName);
+    if (ext == 'pdf') _rasterizePdf();
+  }
+
+  Future<void> _rasterizePdf() async {
+    setState(() => _pdfLoading = true);
+    try {
+      final pages = <Uint8List>[];
+      await for (final page in Printing.raster(Uint8List.fromList(widget.bytes), dpi: 150)) {
+        final png = await page.toPng();
+        pages.add(png);
+      }
+      if (!mounted) return;
+      setState(() {
+        _pdfPages = pages;
+        _pdfLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _pdfError = e.toString();
+        _pdfLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final ext = _ext(fileName);
+    final ext = _FilePreviewDialog._ext(widget.fileName);
     final isImage = const {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'heic', 'heif'}.contains(ext);
     final isText = const {'txt', 'md', 'json', 'csv', 'yaml', 'yml', 'xml', 'log', 'ini'}.contains(ext);
+    final isPdf = ext == 'pdf';
 
     return AlertDialog(
       backgroundColor: const Color(0xFF131313),
       title: Text(
-        'Preview: $fileName',
+        'Preview: ${widget.fileName}',
         style: const TextStyle(color: Colors.white),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
@@ -915,7 +961,7 @@ class _FilePreviewDialog extends StatelessWidget {
       content: SizedBox(
         width: 600,
         height: 420,
-        child: _buildPreviewBody(isImage: isImage, isText: isText),
+        child: _buildPreviewBody(isImage: isImage, isText: isText, isPdf: isPdf),
       ),
       actions: [
         TextButton(
@@ -926,16 +972,40 @@ class _FilePreviewDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildPreviewBody({required bool isImage, required bool isText}) {
+  Widget _buildPreviewBody({required bool isImage, required bool isText, required bool isPdf}) {
     if (isImage) {
       return InteractiveViewer(
         minScale: 0.5,
         maxScale: 4.0,
-        child: Center(child: Image.memory(Uint8List.fromList(bytes), fit: BoxFit.contain)),
+        child: Center(child: Image.memory(Uint8List.fromList(widget.bytes), fit: BoxFit.contain)),
+      );
+    }
+    if (isPdf) {
+      if (_pdfLoading) {
+        return const Center(child: CircularProgressIndicator(color: Color(0xFFAEC6FF)));
+      }
+      if (_pdfError != null || _pdfPages == null || _pdfPages!.isEmpty) {
+        return const Center(
+          child: Text(
+            'Could not render PDF preview.\nUse Download to view the file.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Color(0xFFACABAA), height: 1.4),
+          ),
+        );
+      }
+      return Container(
+        color: Colors.white,
+        child: ListView.builder(
+          itemCount: _pdfPages!.length,
+          itemBuilder: (context, index) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Image.memory(_pdfPages![index], fit: BoxFit.fitWidth),
+          ),
+        ),
       );
     }
     if (isText) {
-      final text = utf8.decode(bytes, allowMalformed: true);
+      final text = utf8.decode(widget.bytes, allowMalformed: true);
       final preview = text.length > 20000 ? '${text.substring(0, 20000)}\n\n... (truncated)' : text;
       return Container(
         width: double.infinity,
@@ -960,16 +1030,11 @@ class _FilePreviewDialog extends StatelessWidget {
     }
     return const Center(
       child: Text(
-        'Preview currently supports text and images.\nUse Download for other file types.',
+        'Preview currently supports text, images, and PDFs.\nUse Download for other file types.',
         textAlign: TextAlign.center,
         style: TextStyle(color: Color(0xFFACABAA), height: 1.4),
       ),
     );
   }
 
-  static String _ext(String fileName) {
-    final dot = fileName.lastIndexOf('.');
-    if (dot <= 0 || dot == fileName.length - 1) return '';
-    return fileName.substring(dot + 1).toLowerCase();
-  }
 }

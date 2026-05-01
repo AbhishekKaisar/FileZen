@@ -569,11 +569,47 @@ class _DatabaseReportsScreenState extends State<DatabaseReportsScreen> {
   }
 }
 
-class _PdfPreviewScreen extends StatelessWidget {
+class _PdfPreviewScreen extends StatefulWidget {
   const _PdfPreviewScreen({required this.pdfBytes, required this.title});
 
   final Uint8List pdfBytes;
   final String title;
+
+  @override
+  State<_PdfPreviewScreen> createState() => _PdfPreviewScreenState();
+}
+
+class _PdfPreviewScreenState extends State<_PdfPreviewScreen> {
+  List<Uint8List>? _pageImages;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _rasterize();
+  }
+
+  Future<void> _rasterize() async {
+    try {
+      final pages = <Uint8List>[];
+      await for (final page in Printing.raster(widget.pdfBytes, dpi: 200)) {
+        final png = await page.toPng();
+        pages.add(png);
+      }
+      if (!mounted) return;
+      setState(() {
+        _pageImages = pages;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -581,23 +617,66 @@ class _PdfPreviewScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF0E0E0E),
       appBar: AppBar(
         backgroundColor: const Color(0xFF0E0E0E),
-        title: Text(title, style: const TextStyle(color: Colors.white, fontFamily: 'Manrope')),
+        title: Text(widget.title, style: const TextStyle(color: Colors.white, fontFamily: 'Manrope')),
         iconTheme: const IconThemeData(color: Color(0xFFAEC6FF)),
         actions: [
           IconButton(
             icon: const Icon(Icons.download),
             tooltip: 'Download / Print',
-            onPressed: () => Printing.sharePdf(bytes: pdfBytes, filename: 'filezen_report.pdf'),
+            onPressed: () => Printing.sharePdf(bytes: widget.pdfBytes, filename: 'filezen_report.pdf'),
           ),
         ],
       ),
-      body: PdfPreview(
-        build: (_) => pdfBytes,
-        canChangeOrientation: false,
-        canChangePageFormat: false,
-        canDebug: false,
-        pdfFileName: 'filezen_report.pdf',
-      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFFAEC6FF)))
+          : _error != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.picture_as_pdf, color: Color(0xFFAEC6FF), size: 48),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'PDF preview unavailable on this device.',
+                          style: TextStyle(color: Colors.white, fontFamily: 'Manrope', fontSize: 18),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Tap the download button above to share or print the report.',
+                          style: TextStyle(color: Color(0xFFACABAA), fontFamily: 'Inter', fontSize: 14),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
+                          onPressed: () => Printing.sharePdf(bytes: widget.pdfBytes, filename: 'filezen_report.pdf'),
+                          icon: const Icon(Icons.share),
+                          label: const Text('Share PDF'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFAEC6FF),
+                            foregroundColor: const Color(0xFF003D8A),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : Container(
+                  color: Colors.white,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _pageImages!.length,
+                    itemBuilder: (context, index) => Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.memory(_pageImages![index], fit: BoxFit.fitWidth),
+                      ),
+                    ),
+                  ),
+                ),
     );
   }
 }
