@@ -22,32 +22,7 @@ class FileZenAppBar extends StatelessWidget implements PreferredSizeWidget {
           color: Colors.white,
         ),
       ),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 16.0),
-          child: IconButton(
-            icon: const Icon(Icons.search, color: Color(0xFFACABAA)),
-            tooltip: 'Search files',
-            onPressed: () => context.go('/explorer'),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(right: 8.0),
-          child: IconButton(
-            icon: const Icon(Icons.settings, color: Color(0xFFACABAA)),
-            tooltip: 'Settings',
-            onPressed: () => context.push('/settings'),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(right: 16.0),
-          child: CircleAvatar(
-            backgroundColor: const Color(0xFF2E3E45),
-            radius: 16,
-            child: const Icon(Icons.person, color: Color(0xFFB1C2CB), size: 16),
-          ),
-        )
-      ],
+      actions: const [],
     );
   }
 

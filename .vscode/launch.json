@@ -22,6 +22,26 @@
       ]
     },
     {
+      "name": "FileZen (macOS, Supabase from .env)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "macos",
+      "toolArgs": [
+        "--dart-define-from-file=${workspaceFolder}/.env"
+      ]
+    },
+    {
+      "name": "FileZen (iOS, Supabase from .env)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "deviceId": "iPhone",
+      "toolArgs": [
+        "--dart-define-from-file=${workspaceFolder}/.env"
+      ]
+    },
+    {
       "name": "FileZen (Windows, mock — no Supabase)",
       "request": "launch",
       "type": "dart",
