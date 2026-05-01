@@ -37,6 +37,22 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
   bool _galleryView = true;
   String? _lastErrorMessage;
 
+  // In-memory cache for downloaded file bytes (keyed by file ID).
+  final Map<String, Uint8List> _bytesCache = {};
+
+  Future<Uint8List> _cachedDownload(ExplorerItem item) async {
+    final id = item.id!;
+    final cached = _bytesCache[id];
+    if (cached != null) return cached;
+    final bytes = await _fileCrud.downloadFileBytes(
+      fileId: id,
+      storageBucket: item.storageBucket ?? '',
+      storageObjectPath: item.storageObjectPath ?? '',
+    );
+    _bytesCache[id] = bytes;
+    return bytes;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -367,11 +383,7 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
     if (id == null || id.isEmpty) return null;
     if (_thumbnailCache.containsKey(id)) return _thumbnailCache[id];
     try {
-      final bytes = await _fileCrud.downloadFileBytes(
-        fileId: id,
-        storageBucket: item.storageBucket ?? '',
-        storageObjectPath: item.storageObjectPath ?? '',
-      );
+      final bytes = await _cachedDownload(item);
       _thumbnailCache[id] = bytes;
       return bytes;
     } catch (e) {
@@ -614,11 +626,7 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
       return;
     }
     try {
-      final bytes = await _fileCrud.downloadFileBytes(
-        fileId: id,
-        storageBucket: bucket,
-        storageObjectPath: objectPath,
-      );
+      final bytes = await _cachedDownload(item);
       if (!mounted) return;
       final saved = await saveBytesToDevice(bytes: bytes, fileName: item.name);
       if (!mounted) return;
@@ -649,11 +657,7 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
     }
 
     try {
-      final bytes = await _fileCrud.downloadFileBytes(
-        fileId: id,
-        storageBucket: item.storageBucket ?? '',
-        storageObjectPath: item.storageObjectPath ?? '',
-      );
+      final bytes = await _cachedDownload(item);
       if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute(
