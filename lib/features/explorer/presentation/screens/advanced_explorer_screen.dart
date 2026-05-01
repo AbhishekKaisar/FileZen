@@ -413,32 +413,11 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
           children: [
             Expanded(
               child: isImage
-                  ? FutureBuilder<Uint8List?>(
-                      future: _getThumbnailBytes(item),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return Container(
-                            color: const Color(0xFF1F2020),
-                            child: const Center(
-                              child: SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Color(0xFFAEC6FF),
-                                ),
-                              ),
-                            ),
-                          );
-                        }
-                        final bytes = snapshot.data;
-                        if (bytes == null) return _buildFileIcon(item, isImage);
-                        return Image.memory(
-                          bytes,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _buildFileIcon(item, isImage),
-                        );
-                      },
+                  ? _ThumbnailWidget(
+                      item: item,
+                      cache: _thumbnailCache,
+                      loadBytes: _getThumbnailBytes,
+                      fallback: _buildFileIcon(item, isImage),
                     )
                   : _buildFileIcon(item, isImage),
             ),
@@ -891,6 +870,72 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Loads thumbnail once and caches — survives rebuilds without re-fetching.
+class _ThumbnailWidget extends StatefulWidget {
+  const _ThumbnailWidget({
+    required this.item,
+    required this.cache,
+    required this.loadBytes,
+    required this.fallback,
+  });
+
+  final ExplorerItem item;
+  final Map<String, Uint8List?> cache;
+  final Future<Uint8List?> Function(ExplorerItem) loadBytes;
+  final Widget fallback;
+
+  @override
+  State<_ThumbnailWidget> createState() => _ThumbnailWidgetState();
+}
+
+class _ThumbnailWidgetState extends State<_ThumbnailWidget> {
+  Uint8List? _bytes;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    final id = widget.item.id;
+    if (id != null && widget.cache.containsKey(id)) {
+      _bytes = widget.cache[id];
+      _loading = false;
+    } else {
+      _load();
+    }
+  }
+
+  Future<void> _load() async {
+    final bytes = await widget.loadBytes(widget.item);
+    if (!mounted) return;
+    setState(() {
+      _bytes = bytes;
+      _loading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return Container(
+        color: const Color(0xFF1F2020),
+        child: const Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFAEC6FF)),
+          ),
+        ),
+      );
+    }
+    if (_bytes == null) return widget.fallback;
+    return Image.memory(
+      _bytes!,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => widget.fallback,
     );
   }
 }
