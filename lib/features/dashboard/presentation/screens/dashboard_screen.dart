@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../widgets/storage_overview_widget.dart';
-import '../widgets/quick_access_grid.dart';
-import '../widgets/auto_sorter_status.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});

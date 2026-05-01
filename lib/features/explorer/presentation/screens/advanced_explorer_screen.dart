@@ -3,7 +3,6 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-
 import '../../data/repositories/explorer_repository_factory.dart';
 import '../../domain/models/explorer_item.dart';
 import '../../domain/models/explorer_query.dart';
@@ -33,31 +32,9 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
   List<ExplorerItem> _allItems = const [];
 
   _ExplorerState _state = _ExplorerState.loading;
-  ExplorerKindFilter _activeFilter = ExplorerKindFilter.all;
-  ExplorerSortBy _sortBy = ExplorerSortBy.nameAsc;
-  bool _showTrashOnly = false;
   bool _uploading = false;
+  bool _galleryView = false;
   String? _lastErrorMessage;
-  static const List<String> _dayOrder = [
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday',
-    'Sunday',
-    'Unscheduled',
-  ];
-  static const List<String> _placementDays = [
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday',
-    'Sunday',
-    'Unscheduled',
-  ];
 
   @override
   void initState() {
@@ -86,9 +63,9 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
     try {
       final query = ExplorerQuery(
         search: _searchController.text,
-        kind: _activeFilter,
-        sortBy: _sortBy,
-        includeDeleted: _showTrashOnly,
+        kind: ExplorerKindFilter.all,
+        sortBy: ExplorerSortBy.updatedDesc,
+        includeDeleted: false,
       );
       final items = await _repository.fetchItems(query);
       if (!mounted) return;
@@ -111,9 +88,9 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
     try {
       final query = ExplorerQuery(
         search: _searchController.text,
-        kind: _activeFilter,
-        sortBy: _sortBy,
-        includeDeleted: _showTrashOnly,
+        kind: ExplorerKindFilter.all,
+        sortBy: ExplorerSortBy.updatedDesc,
+        includeDeleted: false,
       );
       final items = await _repository.fetchItems(query);
       if (!mounted) return;
@@ -208,18 +185,43 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1200),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Explorer',
-                        style: TextStyle(
-                          fontFamily: 'Manrope',
-                          fontSize: 46,
-                          fontWeight: FontWeight.w300,
-                          color: Colors.white,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Explorer',
+                            style: TextStyle(
+                              fontFamily: 'Manrope',
+                              fontSize: 46,
+                              fontWeight: FontWeight.w300,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              IconButton(
+                                onPressed: () => setState(() => _galleryView = false),
+                                icon: Icon(
+                                  Icons.view_list_rounded,
+                                  color: !_galleryView ? const Color(0xFFAEC6FF) : const Color(0xFFACABAA),
+                                ),
+                                tooltip: 'List view',
+                              ),
+                              IconButton(
+                                onPressed: () => setState(() => _galleryView = true),
+                                icon: Icon(
+                                  Icons.grid_view_rounded,
+                                  color: _galleryView ? const Color(0xFFAEC6FF) : const Color(0xFFACABAA),
+                                ),
+                                tooltip: 'Gallery view',
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 8),
                       const Text(
@@ -231,7 +233,7 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      _buildSearchAndFilters(),
+                      _buildSearchBar(),
                       const SizedBox(height: 16),
                       Expanded(child: _buildBody()),
                     ],
@@ -256,115 +258,23 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
     );
   }
 
-  Widget _buildSearchAndFilters() {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        SizedBox(
-          width: 360,
-          child: TextField(
-            controller: _searchController,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: 'Search files and folders...',
-              hintStyle: const TextStyle(color: Color(0xFF767575)),
-              prefixIcon: const Icon(Icons.search, color: Color(0xFFACABAA)),
-              filled: true,
-              fillColor: const Color(0xFF131313),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: const Color(0xFF484848).withValues(alpha: 0.25)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFFAEC6FF)),
-              ),
-            ),
-          ),
+  Widget _buildSearchBar() {
+    return TextField(
+      controller: _searchController,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        hintText: 'Search files...',
+        hintStyle: const TextStyle(color: Color(0xFF767575)),
+        prefixIcon: const Icon(Icons.search, color: Color(0xFFACABAA)),
+        filled: true,
+        fillColor: const Color(0xFF131313),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: const Color(0xFF484848).withValues(alpha: 0.25)),
         ),
-        _buildFilterChip(label: 'All', filter: ExplorerKindFilter.all),
-        _buildFilterChip(label: 'Folders', filter: ExplorerKindFilter.folders),
-        _buildFilterChip(label: 'Files', filter: ExplorerKindFilter.files),
-        ChoiceChip(
-          label: Text(_showTrashOnly ? 'Trash: On' : 'Trash: Off'),
-          selected: _showTrashOnly,
-          onSelected: (selected) {
-            setState(() => _showTrashOnly = selected);
-            _loadItems();
-          },
-          labelStyle: TextStyle(
-            color: _showTrashOnly ? const Color(0xFF003D8A) : const Color(0xFFACABAA),
-            fontWeight: FontWeight.w600,
-          ),
-          selectedColor: const Color(0xFFAEC6FF),
-          backgroundColor: const Color(0xFF1F2020),
-          side: BorderSide(color: const Color(0xFF484848).withValues(alpha: 0.2)),
-          showCheckmark: false,
-        ),
-        _buildSortDropdown(),
-      ],
-    );
-  }
-
-  Widget _buildFilterChip({required String label, required ExplorerKindFilter filter}) {
-    final bool selected = _activeFilter == filter;
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (_) {
-        setState(() {
-          _activeFilter = filter;
-        });
-        _loadItems();
-      },
-      labelStyle: TextStyle(
-        color: selected ? const Color(0xFF003D8A) : const Color(0xFFACABAA),
-        fontWeight: FontWeight.w600,
-      ),
-      selectedColor: const Color(0xFFAEC6FF),
-      backgroundColor: const Color(0xFF1F2020),
-      side: BorderSide(color: const Color(0xFF484848).withValues(alpha: 0.2)),
-      showCheckmark: false,
-    );
-  }
-
-  Widget _buildSortDropdown() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1F2020),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF484848).withValues(alpha: 0.2)),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<ExplorerSortBy>(
-          value: _sortBy,
-          dropdownColor: const Color(0xFF1F2020),
-          iconEnabledColor: const Color(0xFFACABAA),
-          style: const TextStyle(color: Colors.white, fontFamily: 'Inter'),
-          items: const [
-            DropdownMenuItem(
-              value: ExplorerSortBy.nameAsc,
-              child: Text('Name A-Z'),
-            ),
-            DropdownMenuItem(
-              value: ExplorerSortBy.nameDesc,
-              child: Text('Name Z-A'),
-            ),
-            DropdownMenuItem(
-              value: ExplorerSortBy.updatedDesc,
-              child: Text('Recently Updated'),
-            ),
-          ],
-          onChanged: (value) {
-            if (value == null) return;
-            setState(() {
-              _sortBy = value;
-            });
-            _loadItems();
-          },
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFAEC6FF)),
         ),
       ),
     );
@@ -406,19 +316,73 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
             actionLabel: 'Clear search',
             onTap: () {
               _searchController.clear();
-              setState(() {
-                _activeFilter = ExplorerKindFilter.all;
-              });
               _loadItems();
             },
           );
         }
-        return _buildList(items);
+        return _galleryView ? _buildGallery(items) : _buildList(items);
     }
   }
 
   Widget _buildList(List<ExplorerItem> items) {
-    final grouped = _groupByBlockAndDay(items);
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF131313),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF484848).withValues(alpha: 0.2)),
+      ),
+      child: ListView.separated(
+        padding: const EdgeInsets.only(top: 8, bottom: 80),
+        itemCount: items.length,
+        separatorBuilder: (_, __) => Divider(
+          color: const Color(0xFF484848).withValues(alpha: 0.15),
+          height: 1,
+          indent: 16,
+          endIndent: 16,
+        ),
+        itemBuilder: (context, index) => _buildFileTile(items[index]),
+      ),
+    );
+  }
+
+  Widget _buildGallery(List<ExplorerItem> items) {
+    return GridView.builder(
+      padding: const EdgeInsets.only(bottom: 80),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 180,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 0.78,
+      ),
+      itemCount: items.length,
+      itemBuilder: (context, index) => _buildGalleryTile(items[index]),
+    );
+  }
+
+  final Map<String, Uint8List?> _thumbnailCache = {};
+
+  Future<Uint8List?> _getThumbnailBytes(ExplorerItem item) async {
+    final id = item.id;
+    if (id == null || id.isEmpty) return null;
+    if (_thumbnailCache.containsKey(id)) return _thumbnailCache[id];
+    try {
+      final bytes = await _fileCrud.downloadFileBytes(
+        fileId: id,
+        storageBucket: item.storageBucket ?? '',
+        storageObjectPath: item.storageObjectPath ?? '',
+      );
+      _thumbnailCache[id] = bytes;
+      return bytes;
+    } catch (e) {
+      debugPrint('Thumbnail load failed for ${item.name}: $e');
+      _thumbnailCache[id] = null;
+      return null;
+    }
+  }
+
+  Widget _buildGalleryTile(ExplorerItem item) {
+    final ext = _FilePreviewDialog._ext(item.name);
+    final isImage = const {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'heic', 'heif'}.contains(ext);
 
     return Container(
       decoration: BoxDecoration(
@@ -426,128 +390,139 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFF484848).withValues(alpha: 0.2)),
       ),
-      child: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        children: grouped.entries
-            .map((blockEntry) => _buildBlockSection(
-                  blockName: blockEntry.key,
-                  dayGroups: blockEntry.value,
-                ))
-            .toList(),
-      ),
-    );
-  }
-
-  Map<String, Map<String, List<ExplorerItem>>> _groupByBlockAndDay(List<ExplorerItem> items) {
-    final Map<String, Map<String, List<ExplorerItem>>> grouped = {};
-    for (final item in items) {
-      final blockName = item.blockName.trim().isEmpty ? 'Unassigned Block' : item.blockName.trim();
-      final dayName = _normalizeDay(item.dayOfWeek);
-      grouped.putIfAbsent(blockName, () => {});
-      grouped[blockName]!.putIfAbsent(dayName, () => []);
-      grouped[blockName]![dayName]!.add(item);
-    }
-
-    final sortedBlocks = grouped.keys.toList()..sort();
-    final Map<String, Map<String, List<ExplorerItem>>> result = {};
-    for (final block in sortedBlocks) {
-      final days = grouped[block]!;
-      final sortedDays = days.keys.toList()
-        ..sort((a, b) => _dayOrder.indexOf(a).compareTo(_dayOrder.indexOf(b)));
-      result[block] = {
-        for (final day in sortedDays) day: days[day]!,
-      };
-    }
-    return result;
-  }
-
-  String _normalizeDay(String rawDay) {
-    final normalized = rawDay.trim();
-    final found = _dayOrder.firstWhere(
-      (day) => day.toLowerCase() == normalized.toLowerCase(),
-      orElse: () => 'Unscheduled',
-    );
-    return found;
-  }
-
-  Widget _buildBlockSection({
-    required String blockName,
-    required Map<String, List<ExplorerItem>> dayGroups,
-  }) {
-    final totalCount = dayGroups.values.fold<int>(0, (sum, list) => sum + list.length);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF191A1A),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFF484848).withValues(alpha: 0.18)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                blockName,
-                style: const TextStyle(
-                  fontFamily: 'Manrope',
-                  fontSize: 22,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '$totalCount items organized by day',
-                style: const TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 12,
-                  color: Color(0xFFACABAA),
-                ),
-              ),
-              const SizedBox(height: 12),
-              ...dayGroups.entries.map(
-                (dayEntry) => _buildDaySection(
-                  dayName: dayEntry.key,
-                  items: dayEntry.value,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDaySection({
-    required String dayName,
-    required List<ExplorerItem> items,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF131313),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF484848).withValues(alpha: 0.15)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            dayName,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 12,
-              letterSpacing: 1.1,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFFAEC6FF),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _previewFile(item),
+        onLongPress: () => _showItemActions(item),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: isImage
+                  ? FutureBuilder<Uint8List?>(
+                      future: _getThumbnailBytes(item),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return Container(
+                            color: const Color(0xFF1F2020),
+                            child: const Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Color(0xFFAEC6FF),
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                        final bytes = snapshot.data;
+                        if (bytes == null) return _buildFileIcon(item, isImage);
+                        return Image.memory(
+                          bytes,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _buildFileIcon(item, isImage),
+                        );
+                      },
+                    )
+                  : _buildFileIcon(item, isImage),
             ),
-          ),
-          const SizedBox(height: 8),
-          ...items.map(_buildFileTile),
-        ],
+            Container(
+              padding: const EdgeInsets.all(8),
+              color: const Color(0xFF1A1A1A),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.name,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    item.sizeLabel,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 11,
+                      color: Color(0xFFACABAA),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFileIcon(ExplorerItem item, bool isImage) {
+    return Container(
+      color: const Color(0xFF1F2020),
+      child: Center(
+        child: Icon(
+          item.isFolder
+              ? Icons.folder
+              : isImage
+                  ? Icons.image_outlined
+                  : Icons.insert_drive_file_outlined,
+          color: item.isFolder ? const Color(0xFFAEC6FF) : const Color(0xFFACABAA),
+          size: 36,
+        ),
+      ),
+    );
+  }
+
+  void _showItemActions(ExplorerItem item) {
+    final id = item.id;
+    final canMutate = id != null && id.isNotEmpty && !item.isFolder;
+    if (!canMutate) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF131313),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.preview, color: Color(0xFFACABAA)),
+              title: const Text('Preview', style: TextStyle(color: Colors.white)),
+              onTap: () { Navigator.pop(context); _previewFile(item); },
+            ),
+            ListTile(
+              leading: const Icon(Icons.download, color: Color(0xFFACABAA)),
+              title: const Text('Download', style: TextStyle(color: Colors.white)),
+              onTap: () { Navigator.pop(context); _downloadFile(item); },
+            ),
+            ListTile(
+              leading: const Icon(Icons.copy, color: Color(0xFFACABAA)),
+              title: const Text('Copy', style: TextStyle(color: Colors.white)),
+              onTap: () { Navigator.pop(context); _copyFile(item); },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit, color: Color(0xFFACABAA)),
+              title: const Text('Rename', style: TextStyle(color: Colors.white)),
+              onTap: () { Navigator.pop(context); _renameFile(item); },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Color(0xFFEE7D77)),
+              title: const Text('Move to trash', style: TextStyle(color: Color(0xFFEE7D77))),
+              onTap: () { Navigator.pop(context); _confirmDeleteFile(item); },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -578,14 +553,13 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
           ),
         ),
         subtitle: Text(
-          '${item.path}\n${item.updatedLabel}  -  ${item.sizeLabel}',
+          '${item.sizeLabel}  ·  ${item.updatedLabel}',
           style: const TextStyle(
             fontFamily: 'Inter',
+            fontSize: 13,
             color: Color(0xFFACABAA),
-            height: 1.4,
           ),
         ),
-        isThreeLine: true,
         trailing: _buildItemMenu(item),
       ),
     );
@@ -609,29 +583,16 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
           await _copyFile(item);
         } else if (value == 'rename') {
           await _renameFile(item);
-        } else if (value == 'placement') {
-          await _editPlacement(item);
         } else if (value == 'delete') {
           await _confirmDeleteFile(item);
-        } else if (value == 'restore') {
-          await _restoreFile(item);
-        } else if (value == 'hard_delete') {
-          await _confirmHardDeleteFile(item);
         }
       },
       itemBuilder: (context) {
-        if (_showTrashOnly) {
-          return const [
-            PopupMenuItem(value: 'restore', child: Text('Restore')),
-            PopupMenuItem(value: 'hard_delete', child: Text('Delete permanently')),
-          ];
-        }
         return const [
           PopupMenuItem(value: 'preview', child: Text('Preview')),
           PopupMenuItem(value: 'download', child: Text('Download')),
           PopupMenuItem(value: 'copy', child: Text('Copy')),
           PopupMenuItem(value: 'rename', child: Text('Rename')),
-          PopupMenuItem(value: 'placement', child: Text('Set block/day')),
           PopupMenuItem(value: 'delete', child: Text('Move to trash')),
         ];
       },
@@ -767,99 +728,6 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
     );
   }
 
-  Future<void> _editPlacement(ExplorerItem item) async {
-    final id = item.id;
-    if (id == null || id.isEmpty) return;
-    final blockController = TextEditingController(text: item.blockName);
-    var selectedDay = _placementDays.contains(item.dayOfWeek) ? item.dayOfWeek : 'Unscheduled';
-    try {
-      final values = await showDialog<({String blockName, String dayOfWeek})>(
-        context: context,
-        builder: (context) {
-          return StatefulBuilder(
-            builder: (context, setInnerState) => AlertDialog(
-              backgroundColor: const Color(0xFF131313),
-              title: const Text('Set block/day', style: TextStyle(color: Colors.white)),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: blockController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      labelText: 'Block name',
-                      labelStyle: const TextStyle(color: Color(0xFFACABAA)),
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: const Color(0xFF484848).withValues(alpha: 0.5)),
-                      ),
-                      focusedBorder: const UnderlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFFAEC6FF)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedDay,
-                    dropdownColor: const Color(0xFF1F2020),
-                    decoration: InputDecoration(
-                      labelText: 'Day',
-                      labelStyle: const TextStyle(color: Color(0xFFACABAA)),
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: const Color(0xFF484848).withValues(alpha: 0.5)),
-                      ),
-                    ),
-                    items: _placementDays
-                        .map((day) => DropdownMenuItem<String>(value: day, child: Text(day)))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setInnerState(() => selectedDay = value);
-                    },
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel', style: TextStyle(color: Color(0xFFACABAA))),
-                ),
-                TextButton(
-                  onPressed: () {
-                    final block = blockController.text.trim();
-                    Navigator.of(context).pop((
-                      blockName: block.isEmpty ? 'Unassigned Block' : block,
-                      dayOfWeek: selectedDay,
-                    ));
-                  },
-                  child: const Text('Save', style: TextStyle(color: Color(0xFFAEC6FF))),
-                ),
-              ],
-            ),
-          );
-        },
-      );
-
-      if (values == null || !mounted) return;
-      await _fileCrud.updateOrganizerPlacement(
-        fileId: id,
-        blockName: values.blockName,
-        dayOfWeek: values.dayOfWeek,
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Block/day updated'), backgroundColor: Color(0xFF2E3E45)),
-      );
-      await _loadItems();
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not update block/day'), backgroundColor: Color(0xFF7F2927)),
-      );
-    } finally {
-      blockController.dispose();
-    }
-  }
-
   Future<void> _renameFile(ExplorerItem item) async {
     final id = item.id;
     if (id == null || id.isEmpty) return;
@@ -962,68 +830,6 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
     }
   }
 
-  Future<void> _restoreFile(ExplorerItem item) async {
-    final id = item.id;
-    if (id == null || id.isEmpty) return;
-    try {
-      await _fileCrud.restoreFile(fileId: id);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('File restored'), backgroundColor: Color(0xFF2E3E45)),
-      );
-      await _loadItems();
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not restore file'), backgroundColor: Color(0xFF7F2927)),
-      );
-    }
-  }
-
-  Future<void> _confirmHardDeleteFile(ExplorerItem item) async {
-    final id = item.id;
-    if (id == null || id.isEmpty) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF131313),
-        title: const Text('Delete permanently?', style: TextStyle(color: Colors.white)),
-        content: Text(
-          'This will permanently remove "${item.name}" from storage and database.',
-          style: const TextStyle(color: Color(0xFFACABAA)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFFACABAA))),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete', style: TextStyle(color: Color(0xFFEE7D77))),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-    try {
-      await _fileCrud.hardDeleteFile(
-        fileId: id,
-        storageBucket: item.storageBucket,
-        storageObjectPath: item.storageObjectPath,
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('File permanently deleted'), backgroundColor: Color(0xFF2E3E45)),
-      );
-      await _loadItems();
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not permanently delete file'), backgroundColor: Color(0xFF7F2927)),
-      );
-    }
-  }
-
   Widget _buildStatusCard({
     required IconData icon,
     required String title,
@@ -1095,7 +901,7 @@ class _FilePreviewDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ext = _ext(fileName);
-    final isImage = const {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'}.contains(ext);
+    final isImage = const {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'heic', 'heif'}.contains(ext);
     final isText = const {'txt', 'md', 'json', 'csv', 'yaml', 'yml', 'xml', 'log', 'ini'}.contains(ext);
 
     return AlertDialog(

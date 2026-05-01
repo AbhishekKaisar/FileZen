@@ -366,8 +366,13 @@ class SupabaseExplorerFileCrudRepository implements ExplorerFileCrudRepository {
         .eq('file_id', fileId)
         .limit(1);
     if (rows.isEmpty) return null;
-    final encoded = rows.first['content_base64']?.toString();
-    if (encoded == null || encoded.isEmpty) return null;
+    final raw = rows.first['content_base64'];
+    if (raw == null) return null;
+    // Supabase may return bytea columns as raw bytes (Uint8List) or as a base64 string.
+    if (raw is Uint8List) return raw;
+    if (raw is List<int>) return Uint8List.fromList(raw);
+    final encoded = raw.toString();
+    if (encoded.isEmpty) return null;
     return Uint8List.fromList(base64Decode(encoded));
   }
 }
