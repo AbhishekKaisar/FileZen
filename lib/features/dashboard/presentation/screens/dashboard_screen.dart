@@ -21,10 +21,6 @@ class DashboardScreen extends StatelessWidget {
               children: [
                 StorageOverviewWidget(),
                 SizedBox(height: 64),
-                QuickAccessGrid(),
-                SizedBox(height: 64),
-                AutoSorterStatus(),
-                SizedBox(height: 128),
               ],
             ),
           ),

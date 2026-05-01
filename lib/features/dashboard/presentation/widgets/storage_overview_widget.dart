@@ -15,10 +15,10 @@ class StorageOverviewWidget extends StatefulWidget {
 class _StorageOverviewWidgetState extends State<StorageOverviewWidget> {
   int _usedBytes = 0;
   int _totalFiles = 0;
+  int _capacityBytes = 0;
+  int _supabaseStorageUsed = 0;
+  static const int _supabaseStorageLimit = 1024 * 1024 * 1024; // 1 GB free tier
   bool _loading = true;
-
-  // Workspace capacity (configurable upper bound for the ring chart).
-  static const int _capacityBytes = 2 * 1024 * 1024 * 1024; // 2 GB default
 
   @override
   void initState() {
@@ -50,14 +50,72 @@ class _StorageOverviewWidgetState extends State<StorageOverviewWidget> {
         total += ((row['size_bytes'] as num?) ?? 0).toInt();
       }
       if (!mounted) return;
+
+      // Determine workspace capacity: try workspace_settings first,
+      // otherwise auto-scale to a readable tier above actual usage.
+      int capacity = _autoCapacity(total);
+      try {
+        final settingsRows = await client
+            .schema(dbSchema)
+            .from('workspace_settings')
+            .select('storage_quota_bytes')
+            .eq('workspace_id', workspaceId)
+            .limit(1);
+        if (settingsRows.isNotEmpty) {
+          final quota = (settingsRows.first['storage_quota_bytes'] as num?)?.toInt();
+          if (quota != null && quota > 0) capacity = quota;
+        }
+      } catch (_) {
+        // workspace_settings may not have this column; use auto-scale.
+      }
+
+      // Fetch actual Supabase storage bucket usage.
+      int bucketUsed = total;
+      try {
+        final storageRows = await client
+            .schema(dbSchema)
+            .from('files')
+            .select('size_bytes')
+            .eq('workspace_id', workspaceId);
+        int storageTotal = 0;
+        for (final row in storageRows) {
+          storageTotal += ((row['size_bytes'] as num?) ?? 0).toInt();
+        }
+        bucketUsed = storageTotal;
+      } catch (_) {
+        // Fall back to the non-deleted total.
+      }
+
+      if (!mounted) return;
       setState(() {
         _usedBytes = total;
         _totalFiles = rows.length;
+        _capacityBytes = capacity;
+        _supabaseStorageUsed = bucketUsed;
         _loading = false;
       });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  /// Pick the next readable tier above [usedBytes] so the ring chart
+  /// shows a meaningful percentage (e.g. 4.7 MB used → 10 MB capacity → 47%).
+  static int _autoCapacity(int usedBytes) {
+    if (usedBytes <= 0) return 100 * 1024 * 1024; // 100 MB default
+    const tiers = [
+      10 * 1024 * 1024,        //   10 MB
+      50 * 1024 * 1024,        //   50 MB
+      100 * 1024 * 1024,       //  100 MB
+      500 * 1024 * 1024,       //  500 MB
+      1024 * 1024 * 1024,      //    1 GB
+    ];
+    for (final tier in tiers) {
+      if (usedBytes < tier) return tier;
+    }
+    // Above 1 GB: round up to the next whole GB.
+    const gb = 1024 * 1024 * 1024;
+    return ((usedBytes / gb).ceil() + 1) * gb;
   }
 
   @override
@@ -157,11 +215,64 @@ class _StorageOverviewWidgetState extends State<StorageOverviewWidget> {
                   const SizedBox(width: 16),
                   _buildStatCard('FREE SPACE', freeLabel, const Color(0xFFAEC6FF)),
                 ],
-              )
+              ),
+              const SizedBox(height: 20),
+              _buildSupabaseStorageBar(),
             ],
           ),
         )
       ],
+    );
+  }
+
+  Widget _buildSupabaseStorageBar() {
+    final usedLabel = ExplorerByteFormat.humanReadable(_supabaseStorageUsed);
+    final limitLabel = ExplorerByteFormat.humanReadable(_supabaseStorageLimit);
+    final fraction = (_supabaseStorageUsed / _supabaseStorageLimit).clamp(0.0, 1.0);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF131313),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'SUPABASE STORAGE',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 12,
+                  letterSpacing: 1,
+                  color: Color(0xFFACABAA),
+                ),
+              ),
+              Text(
+                '$usedLabel / $limitLabel',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 12,
+                  color: Color(0xFFACABAA),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: fraction,
+              minHeight: 8,
+              backgroundColor: const Color(0xFF2E3E45),
+              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF3ECF8E)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
