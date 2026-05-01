@@ -655,9 +655,10 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
         storageObjectPath: item.storageObjectPath ?? '',
       );
       if (!mounted) return;
-      await showDialog<void>(
-        context: context,
-        builder: (context) => _FilePreviewDialog(fileName: item.name, bytes: bytes),
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => _FilePreviewDialog(fileName: item.name, bytes: bytes),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -950,25 +951,19 @@ class _FilePreviewDialogState extends State<_FilePreviewDialog> {
     final isText = const {'txt', 'md', 'json', 'csv', 'yaml', 'yml', 'xml', 'log', 'ini'}.contains(ext);
     final isPdf = ext == 'pdf';
 
-    return AlertDialog(
-      backgroundColor: const Color(0xFF131313),
-      title: Text(
-        'Preview: ${widget.fileName}',
-        style: const TextStyle(color: Colors.white),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      content: SizedBox(
-        width: 600,
-        height: 420,
-        child: _buildPreviewBody(isImage: isImage, isText: isText, isPdf: isPdf),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close', style: TextStyle(color: Color(0xFFAEC6FF))),
+    return Scaffold(
+      backgroundColor: const Color(0xFF0E0E0E),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0E0E0E),
+        title: Text(
+          widget.fileName,
+          style: const TextStyle(color: Colors.white, fontFamily: 'Manrope'),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
-      ],
+        iconTheme: const IconThemeData(color: Color(0xFFAEC6FF)),
+      ),
+      body: _buildPreviewBody(isImage: isImage, isText: isText, isPdf: isPdf),
     );
   }
 
@@ -996,10 +991,14 @@ class _FilePreviewDialogState extends State<_FilePreviewDialog> {
       return Container(
         color: Colors.white,
         child: ListView.builder(
+          padding: const EdgeInsets.all(16),
           itemCount: _pdfPages!.length,
           itemBuilder: (context, index) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Image.memory(_pdfPages![index], fit: BoxFit.fitWidth),
+            padding: const EdgeInsets.only(bottom: 16),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.memory(_pdfPages![index], fit: BoxFit.fitWidth),
+            ),
           ),
         ),
       );
@@ -1007,23 +1006,15 @@ class _FilePreviewDialogState extends State<_FilePreviewDialog> {
     if (isText) {
       final text = utf8.decode(widget.bytes, allowMalformed: true);
       final preview = text.length > 20000 ? '${text.substring(0, 20000)}\n\n... (truncated)' : text;
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0E0E0E),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFF484848).withValues(alpha: 0.25)),
-        ),
-        child: SingleChildScrollView(
-          child: SelectableText(
-            preview,
-            style: const TextStyle(
-              fontFamily: 'monospace',
-              color: Color(0xFFE2E2E2),
-              fontSize: 13,
-              height: 1.35,
-            ),
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: SelectableText(
+          preview,
+          style: const TextStyle(
+            fontFamily: 'monospace',
+            color: Color(0xFFE2E2E2),
+            fontSize: 13,
+            height: 1.35,
           ),
         ),
       );
