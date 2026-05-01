@@ -17,7 +17,6 @@ class ScaffoldWithNavBar extends StatelessWidget {
       backgroundColor: const Color(0xFF0E0E0E),
       appBar: const FileZenAppBar(),
       body: child,
-      // Wrap in a safe area for the bottom area primarily in case it overlaps with gesture navigation
       bottomNavigationBar: SafeArea(
         child: Container(
           height: 64,
@@ -43,50 +42,39 @@ class ScaffoldWithNavBar extends StatelessWidget {
     final String location = GoRouterState.of(context).uri.path;
     final bool isActive = location == route;
 
-    if (isActive) {
-      return InkWell(
+    return Expanded(
+      child: InkWell(
         onTap: () => context.go(route),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFF2E3E45), // secondary-container
-            borderRadius: BorderRadius.circular(16),
-          ),
+        child: SizedBox(
+          height: 64,
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: const Color(0xFFAEC6FF)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isActive ? const Color(0xFF2E3E45) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  icon,
+                  color: isActive ? const Color(0xFFAEC6FF) : const Color(0xFFACABAA),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(height: 2),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
-                  color: Color(0xFFAEC6FF),
+                  color: isActive ? const Color(0xFFAEC6FF) : const Color(0xFFACABAA),
                 ),
               ),
             ],
           ),
         ),
-      );
-    }
-    return InkWell(
-      onTap: () => context.go(route),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: const Color(0xFFACABAA)),
-          Text(
-            label,
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFFACABAA),
-            ),
-          ),
-        ],
       ),
     );
   }

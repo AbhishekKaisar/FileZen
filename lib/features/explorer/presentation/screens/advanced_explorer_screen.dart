@@ -33,7 +33,7 @@ class _AdvancedExplorerScreenState extends State<AdvancedExplorerScreen> {
 
   _ExplorerState _state = _ExplorerState.loading;
   bool _uploading = false;
-  bool _galleryView = false;
+  bool _galleryView = true;
   String? _lastErrorMessage;
 
   @override

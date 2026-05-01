@@ -25,19 +25,19 @@ final GoRouter appRouter = GoRouter(
       routes: <RouteBase>[
         GoRoute(
           path: '/',
-          builder: (BuildContext context, GoRouterState state) => const DashboardScreen(),
+          pageBuilder: (context, state) => const NoTransitionPage(child: DashboardScreen()),
         ),
         GoRoute(
           path: '/explorer',
-          builder: (BuildContext context, GoRouterState state) => const AdvancedExplorerScreen(),
+          pageBuilder: (context, state) => const NoTransitionPage(child: AdvancedExplorerScreen()),
         ),
         GoRoute(
           path: '/organizer',
-          builder: (BuildContext context, GoRouterState state) => const BlockOrganizerScreen(),
+          pageBuilder: (context, state) => const NoTransitionPage(child: BlockOrganizerScreen()),
         ),
         GoRoute(
           path: '/reports',
-          builder: (BuildContext context, GoRouterState state) => const DatabaseReportsScreen(),
+          pageBuilder: (context, state) => const NoTransitionPage(child: DatabaseReportsScreen()),
         ),
       ],
     ),
