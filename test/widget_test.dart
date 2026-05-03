@@ -1,16 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:file_zen/main.dart';
 
 void main() {
   testWidgets('App initialization smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const FileZenApp());
+    // Load empty env so Env helper works in test without .env file.
+    dotenv.load(mergeWith: {});
 
-    // Let async timers (mock repository delays) complete.
+    await tester.pumpWidget(const FileZenApp());
     await tester.pumpAndSettle();
 
-    // Verify that the app launches successfully.
     expect(find.byType(FileZenApp), findsOneWidget);
   });
 }

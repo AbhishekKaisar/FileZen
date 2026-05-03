@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/env.dart';
 import '../../data/organizer_run_now_service.dart';
 import '../widgets/extension_protocols_card.dart';
 import '../widgets/temporal_logic_picker.dart';
@@ -20,9 +21,9 @@ class _OrganizerSettingsScreenState extends State<OrganizerSettingsScreen> {
 
   Future<void> _runOrganizerNow() async {
     if (_running) return;
-    const useSupabase = bool.fromEnvironment('USE_SUPABASE_EXPLORER', defaultValue: false);
-    const workspaceId = String.fromEnvironment('FILEZEN_WORKSPACE_ID', defaultValue: '');
-    const dbSchema = String.fromEnvironment('FILEZEN_DB_SCHEMA', defaultValue: 'app');
+    final useSupabase = Env.useSupabase;
+    final workspaceId = Env.workspaceId;
+    final dbSchema = Env.dbSchema;
     if (!useSupabase || workspaceId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

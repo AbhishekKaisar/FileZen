@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:math';
 
+import '../../../../core/env.dart';
 import '../../../explorer/data/explorer_byte_format.dart';
 
 /// Queries Supabase for real storage totals, or shows zero-state when unavailable.
@@ -27,9 +28,9 @@ class _StorageOverviewWidgetState extends State<StorageOverviewWidget> {
   }
 
   Future<void> _loadStorageStats() async {
-    const useSupabase = bool.fromEnvironment('USE_SUPABASE_EXPLORER', defaultValue: false);
-    const workspaceId = String.fromEnvironment('FILEZEN_WORKSPACE_ID', defaultValue: '');
-    const dbSchema = String.fromEnvironment('FILEZEN_DB_SCHEMA', defaultValue: 'app');
+    final useSupabase = Env.useSupabase;
+    final workspaceId = Env.workspaceId;
+    final dbSchema = Env.dbSchema;
 
     if (!useSupabase || workspaceId.isEmpty) {
       if (mounted) setState(() => _loading = false);

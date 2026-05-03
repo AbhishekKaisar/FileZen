@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/env.dart';
 
 /// Shows the latest organizer scan status from the Supabase `scan_jobs` table.
 class AutoSorterStatus extends StatefulWidget {
@@ -23,9 +24,9 @@ class _AutoSorterStatusState extends State<AutoSorterStatus> {
   }
 
   Future<void> _loadStatus() async {
-    const useSupabase = bool.fromEnvironment('USE_SUPABASE_EXPLORER', defaultValue: false);
-    const workspaceId = String.fromEnvironment('FILEZEN_WORKSPACE_ID', defaultValue: '');
-    const dbSchema = String.fromEnvironment('FILEZEN_DB_SCHEMA', defaultValue: 'app');
+    final useSupabase = Env.useSupabase;
+    final workspaceId = Env.workspaceId;
+    final dbSchema = Env.dbSchema;
 
     if (!useSupabase || workspaceId.isEmpty) {
       if (mounted) {

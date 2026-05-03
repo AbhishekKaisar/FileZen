@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/env.dart';
 import '../../../explorer/domain/models/explorer_item.dart';
 import '../widgets/security_context_card.dart';
 import '../widgets/unix_permissions_widget.dart';
@@ -29,8 +30,8 @@ class _MetadataVisualizerBottomSheetState extends State<MetadataVisualizerBottom
   }
 
   Future<void> _loadMetadata() async {
-    const useSupabase = bool.fromEnvironment('USE_SUPABASE_EXPLORER', defaultValue: false);
-    const dbSchema = String.fromEnvironment('FILEZEN_DB_SCHEMA', defaultValue: 'app');
+    final useSupabase = Env.useSupabase;
+    final dbSchema = Env.dbSchema;
 
     if (!useSupabase || widget.item.id == null) {
       if (mounted) setState(() => _loading = false);

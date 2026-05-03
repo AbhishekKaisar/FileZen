@@ -6,6 +6,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/env.dart';
 import '../../../explorer/data/explorer_byte_format.dart';
 
 class DatabaseReportsScreen extends StatefulWidget {
@@ -77,9 +78,9 @@ class _DatabaseReportsScreenState extends State<DatabaseReportsScreen> {
   }
 
   Future<void> _loadReport() async {
-    const useSupabase = bool.fromEnvironment('USE_SUPABASE_EXPLORER', defaultValue: false);
-    const workspaceId = String.fromEnvironment('FILEZEN_WORKSPACE_ID', defaultValue: '');
-    const dbSchema = String.fromEnvironment('FILEZEN_DB_SCHEMA', defaultValue: 'app');
+    final useSupabase = Env.useSupabase;
+    final workspaceId = Env.workspaceId;
+    final dbSchema = Env.dbSchema;
 
     if (!useSupabase || workspaceId.isEmpty) {
       setState(() => _error = 'Reports require Supabase mode.');
